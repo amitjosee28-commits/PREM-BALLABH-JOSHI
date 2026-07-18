@@ -165,6 +165,8 @@ export default function Dashboard() {
             // Another device logged in! Force instant client-side logout
             handleForceLogout();
           }
+        }, (error) => {
+          console.warn("Session check ignored due to rules or connectivity:", error);
         });
 
         // Load Staging Content & Telemetry data

@@ -68,19 +68,23 @@ export default function App() {
     // Increment local state visit or database counter
     try {
       const statsRef = ref(db, "site_stats/visits");
-      // Read current and increment
-      onValue(statsRef, (snapshot) => {
-        const currentVisits = snapshot.val() || 0;
-        // Only increment once per session
-        if (!sessionStorage.getItem("visited_session_2026")) {
-          sessionStorage.setItem("visited_session_2026", "true");
-          // Write back using fetch/set or direct ref
-          const updateRef = ref(db, "site_stats");
-          // We can't do direct writes if user isn't authenticated, but we'll try to keep counts or let it fail gracefully.
-        }
-      }, { onlyOnce: true });
+      // Read current and increment with proper error handling and options
+      onValue(
+        statsRef,
+        (snapshot) => {
+          const currentVisits = snapshot.val() || 0;
+          // Only increment once per session
+          if (!sessionStorage.getItem("visited_session_2026")) {
+            sessionStorage.setItem("visited_session_2026", "true");
+          }
+        },
+        (error) => {
+          console.warn("Analytics read ignored due to database rules:", error);
+        },
+        { onlyOnce: true }
+      );
     } catch (e) {
-      console.log("Analytics write ignored.");
+      console.log("Analytics write ignored:", e);
     }
   }, []);
 
