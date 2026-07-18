@@ -4,13 +4,8 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
-  // Dynamically resolve base path for GitHub Pages or fall back to relative path
-  const base = process.env.GITHUB_REPOSITORY 
-    ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/` 
-    : './';
-
   return {
-    base,
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
