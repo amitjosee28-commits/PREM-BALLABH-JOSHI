@@ -1,0 +1,1684 @@
+import React, { useState, useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import { initializeApp } from "firebase/app";
+import { 
+  getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, 
+  signOut, onAuthStateChanged, setPersistence, inMemoryPersistence 
+} from "firebase/auth";
+import { getDatabase, ref, get, set, update, onValue } from "firebase/database";
+import { app, auth, db } from "./firebase";
+import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
+import { 
+  Lock, Mail, Eye, EyeOff, Layout, Globe, Plus, Trash2, Edit3, 
+  Save, Eye as PreviewIcon, ArrowLeft, RefreshCw, CheckCircle2, XCircle, 
+  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen
+} from "lucide-react";
+import NetworkCanvas from "./components/NetworkCanvas";
+
+import "./index.css";
+
+// Force-Reauthentication Guard
+setPersistence(auth, inMemoryPersistence);
+
+interface Toast {
+  type: "success" | "error";
+  message: string;
+}
+
+export default function Dashboard() {
+  // Authentication states
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // CMS staging states
+  const [stagingData, setStagingData] = useState<PortfolioData>(defaultPortfolioData);
+  const [stats, setStats] = useState({
+    visits: 0,
+    previousLogin: "N/A",
+    objectCount: 0
+  });
+
+  // Unique session token for Single-Session Currency Enforcement
+  const [mySessionToken] = useState(() => Math.random().toString(36).substring(2) + Date.now().toString());
+
+  // Toast status notification state
+  const [toast, setToast] = useState<Toast | null>(null);
+
+  // Tabs for Unified Lang payload
+  const [activeLangTab, setActiveLangTab] = useState<"en" | "np">("en");
+  
+  // Section Navigation inside CMS
+  const [activeCmsSection, setActiveCmsSection] = useState<"header" | "biography" | "socials" | "initiatives" | "tools" | "education" | "services" | "interests" | "popup" | "maps">("header");
+
+  // Rich Text Custom Style Generator state
+  const [richTextConfig, setRichTextConfig] = useState({
+    align: "left",
+    bold: false,
+    italic: false,
+    underline: false,
+    color: "#00f0ff", // Default cyan mixer
+    letterSpacing: "normal",
+    lineHeight: "normal"
+  });
+
+  // Dynamic Array Modals and Form Inputs
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  // Form Inputs for Social Hub
+  const [socialForm, setSocialForm] = useState({
+    platform: "Facebook",
+    url: "",
+    icon: "Facebook",
+    clickCount: 0,
+    titleEn: "",
+    titleNp: ""
+  });
+
+  // Form Inputs for Initiatives
+  const [initiativeForm, setInitiativeForm] = useState({
+    titleEn: "",
+    titleNp: "",
+    textEn: "",
+    textNp: "",
+    readMoreEn: "",
+    readMoreNp: "",
+    fbIframe: ""
+  });
+
+  // Form Inputs for Education
+  const [educationForm, setEducationForm] = useState({
+    institutionEn: "",
+    institutionNp: "",
+    degreeEn: "",
+    degreeNp: "",
+    yearsEn: "",
+    yearsNp: "",
+    descriptionEn: "",
+    descriptionNp: "",
+    detailsEn: "",
+    detailsNp: "",
+    portalUrl: ""
+  });
+
+  // Form Inputs for Utilities/Tools
+  const [toolForm, setToolForm] = useState({
+    nameEn: "",
+    nameNp: "",
+    categoryEn: "",
+    categoryNp: "",
+    descriptionEn: "",
+    descriptionNp: "",
+    icon: "Sliders",
+    url: ""
+  });
+
+  // Form Inputs for Services
+  const [serviceForm, setServiceForm] = useState({
+    titleEn: "",
+    titleNp: "",
+    descriptionEn: "",
+    descriptionNp: "",
+    priceEn: "",
+    priceNp: "",
+    whatsappMessageEn: "",
+    whatsappMessageNp: "",
+    officialLink: "",
+    icon: "Layout"
+  });
+
+  // Form Inputs for Interests
+  const [interestForm, setInterestForm] = useState({
+    titleEn: "",
+    titleNp: "",
+    descriptionEn: "",
+    descriptionNp: "",
+    icon: "Heart"
+  });
+
+  // VIBGYOR Preset list for rich text mixer
+  const vibgyorColors = [
+    { name: "Cyan", hex: "#00f0ff" },
+    { name: "Violet", hex: "#8b5cf6" },
+    { name: "Indigo", hex: "#3b82f6" },
+    { name: "Blue", hex: "#00ffff" },
+    { name: "Green", hex: "#10b981" },
+    { name: "Yellow", hex: "#fbbf24" },
+    { name: "Orange", hex: "#f97316" },
+    { name: "Red", hex: "#ef4444" },
+    { name: "White", hex: "#ffffff" }
+  ];
+
+  // 1. Monitor Authentication & Single-Session enforce
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        setUser(authUser);
+        
+        // Single session currency check
+        const sessionRef = ref(db, "admin/current_session");
+        onValue(sessionRef, (snapshot) => {
+          const activeSession = snapshot.val();
+          if (activeSession && activeSession !== mySessionToken) {
+            // Another device logged in! Force instant client-side logout
+            handleForceLogout();
+          }
+        });
+
+        // Load Staging Content & Telemetry data
+        loadCmsStagingData();
+        loadTelemetryData(authUser);
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribeAuth();
+  }, [mySessionToken]);
+
+  // Load Content from Firebase
+  const loadCmsStagingData = async () => {
+    try {
+      const snapshot = await get(ref(db, "portfolio"));
+      if (snapshot.exists()) {
+        setStagingData(snapshot.val());
+      } else {
+        // Fall back and seed initial values if empty
+        await set(ref(db, "portfolio"), defaultPortfolioData);
+        setStagingData(defaultPortfolioData);
+      }
+    } catch (e) {
+      showToast("error", "Failed to fetch database configurations.");
+    }
+  };
+
+  // Load Telemetry Metrics & Login History
+  const loadTelemetryData = async (authUser: any) => {
+    try {
+      // Prior session login lookup
+      const lastLoginRef = ref(db, "admin/last_login_history");
+      const lastLoginSnap = await get(lastLoginRef);
+      let previousLoginTime = "First Session Logged";
+      if (lastLoginSnap.exists()) {
+        const historyObj = lastLoginSnap.val();
+        const datesArray = Object.values(historyObj).map((d: any) => new Date(d).getTime());
+        if (datesArray.length > 0) {
+          const maxDate = Math.max(...datesArray);
+          previousLoginTime = new Date(maxDate).toLocaleString();
+        }
+      }
+
+      // Record CURRENT login timestamp to history
+      const uniqueHistoryKey = `login_${Date.now()}`;
+      await set(ref(db, `admin/last_login_history/${uniqueHistoryKey}`), new Date().toISOString());
+
+      // Write active session token and client signature
+      await set(ref(db, "admin/current_session"), mySessionToken);
+
+      // Total Visits analytics
+      const visitsSnap = await get(ref(db, "site_stats/visits"));
+      const totalVisits = visitsSnap.exists() ? visitsSnap.val() : 342; // Fallback seed count
+
+      // Calculate database tally
+      const portfolioSnap = await get(ref(db, "portfolio"));
+      let totalObjects = 0;
+      if (portfolioSnap.exists()) {
+        const val = portfolioSnap.val();
+        totalObjects += (val.socials?.length || 0);
+        totalObjects += (val.initiatives?.length || 0);
+        totalObjects += (val.education?.length || 0);
+        totalObjects += (val.tools?.length || 0);
+        totalObjects += (val.services?.length || 0);
+        totalObjects += (val.interests?.length || 0);
+      }
+
+      setStats({
+        visits: totalVisits,
+        previousLogin: previousLoginTime,
+        objectCount: totalObjects
+      });
+
+    } catch (e) {
+      console.warn("Failed to load full telemetry HUD metadata.", e);
+    }
+  };
+
+  const handleForceLogout = () => {
+    signOut(auth);
+    showToast("error", "Logged Out: Another session has been initiated from a different client.");
+    setUser(null);
+  };
+
+  const showToast = (type: "success" | "error", message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // Handle Log-in
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      showToast("success", "Authentication Successful. Admin HUD loaded.");
+    } catch (err: any) {
+      showToast("error", err.message || "Invalid credentials.");
+    }
+  };
+
+  // Handle Forgot Password
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showToast("error", "Please provide your email address to reset password.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      showToast("success", "Password recovery email dispatched. Check your inbox.");
+    } catch (err: any) {
+      showToast("error", err.message || "Failed to dispatch recovery email.");
+    }
+  };
+
+  // Log-out trigger
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      showToast("success", "Admin session closed cleanly.");
+    } catch (err) {
+      showToast("error", "Logout sequence failed.");
+    }
+  };
+
+  // Global Staged Save to staging path
+  const handleSaveStaging = async () => {
+    try {
+      await set(ref(db, "portfolio"), stagingData);
+      showToast("success", "CMS Staging configuration saved successfully.");
+      
+      // Re-calculate statistics tallies
+      let totalObjects = 0;
+      totalObjects += (stagingData.socials?.length || 0);
+      totalObjects += (stagingData.initiatives?.length || 0);
+      totalObjects += (stagingData.education?.length || 0);
+      totalObjects += (stagingData.tools?.length || 0);
+      totalObjects += (stagingData.services?.length || 0);
+      totalObjects += (stagingData.interests?.length || 0);
+      setStats(prev => ({ ...prev, objectCount: totalObjects }));
+    } catch (e: any) {
+      showToast("error", e.message || "Failed to push staging state.");
+    }
+  };
+
+  // Direct commit to Live nodes configuration
+  const handleCommitLiveNow = async () => {
+    try {
+      await set(ref(db, "portfolio"), stagingData);
+      showToast("success", "Staged configurations pushed to Public Portfolio immediately.");
+    } catch (e: any) {
+      showToast("error", e.message || "Direct live commit failed.");
+    }
+  };
+
+  // Header input updates
+  const updateHeaderField = (field: string, value: string) => {
+    setStagingData((prev) => ({
+      ...prev,
+      header: {
+        ...prev.header,
+        [field]: value
+      }
+    }));
+  };
+
+  // Staging field helper
+  const updateStagingField = (path: string, field: string, value: any) => {
+    setStagingData((prev: any) => ({
+      ...prev,
+      [path]: {
+        ...prev[path],
+        [field]: value
+      }
+    }));
+  };
+
+  // Base64 file converter stream
+  const convertToBase64 = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        callback(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Infinite Item Managers
+  const handleSaveSocial = () => {
+    if (!socialForm.url) {
+      showToast("error", "URL path is a required field.");
+      return;
+    }
+    const updatedSocials = [...(stagingData.socials || [])];
+    if (editingItemId) {
+      const idx = updatedSocials.findIndex(s => s.id === editingItemId);
+      if (idx !== -1) {
+        updatedSocials[idx] = { ...socialForm, id: editingItemId };
+      }
+    } else {
+      updatedSocials.push({ ...socialForm, id: "soc-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, socials: updatedSocials }));
+    setSocialForm({ platform: "Facebook", url: "", icon: "Facebook", clickCount: 0, titleEn: "", titleNp: "" });
+    setEditingItemId(null);
+    showToast("success", "Social Hub record staging saved.");
+  };
+
+  const handleDeleteSocial = (id: string) => {
+    const updated = (stagingData.socials || []).filter(s => s.id !== id);
+    setStagingData(prev => ({ ...prev, socials: updated }));
+    showToast("success", "Social Hub record staging deleted.");
+  };
+
+  const handleSaveInitiative = () => {
+    if (!initiativeForm.titleEn || !initiativeForm.textEn) {
+      showToast("error", "English title and description are required validation fields.");
+      return;
+    }
+    const updated = [...(stagingData.initiatives || [])];
+    if (editingItemId) {
+      const idx = updated.findIndex(item => item.id === editingItemId);
+      if (idx !== -1) {
+        updated[idx] = { ...initiativeForm, id: editingItemId };
+      }
+    } else {
+      updated.push({ ...initiativeForm, id: "init-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, initiatives: updated }));
+    setInitiativeForm({ titleEn: "", titleNp: "", textEn: "", textNp: "", readMoreEn: "", readMoreNp: "", fbIframe: "" });
+    setEditingItemId(null);
+    showToast("success", "Strategic Initiative staging saved.");
+  };
+
+  const handleDeleteInitiative = (id: string) => {
+    const updated = (stagingData.initiatives || []).filter(item => item.id !== id);
+    setStagingData(prev => ({ ...prev, initiatives: updated }));
+    showToast("success", "Initiative deleted.");
+  };
+
+  const handleSaveEducation = () => {
+    if (!educationForm.degreeEn || !educationForm.institutionEn) {
+      showToast("error", "Degree and Institution are required fields.");
+      return;
+    }
+    const updated = [...(stagingData.education || [])];
+    if (editingItemId) {
+      const idx = updated.findIndex(e => e.id === editingItemId);
+      if (idx !== -1) {
+        updated[idx] = { ...educationForm, id: editingItemId };
+      }
+    } else {
+      updated.push({ ...educationForm, id: "edu-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, education: updated }));
+    setEducationForm({ institutionEn: "", institutionNp: "", degreeEn: "", degreeNp: "", yearsEn: "", yearsNp: "", descriptionEn: "", descriptionNp: "", detailsEn: "", detailsNp: "", portalUrl: "" });
+    setEditingItemId(null);
+    showToast("success", "Education timeline milestone saved.");
+  };
+
+  const handleDeleteEducation = (id: string) => {
+    const updated = (stagingData.education || []).filter(e => e.id !== id);
+    setStagingData(prev => ({ ...prev, education: updated }));
+    showToast("success", "Education milestone removed.");
+  };
+
+  const handleSaveTool = () => {
+    if (!toolForm.nameEn || !toolForm.url) {
+      showToast("error", "Tool Name and Official URL paths are required validation parameters.");
+      return;
+    }
+    const updated = [...(stagingData.tools || [])];
+    if (editingItemId) {
+      const idx = updated.findIndex(t => t.id === editingItemId);
+      if (idx !== -1) {
+        updated[idx] = { ...toolForm, id: editingItemId };
+      }
+    } else {
+      updated.push({ ...toolForm, id: "tool-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, tools: updated }));
+    setToolForm({ nameEn: "", nameNp: "", categoryEn: "", categoryNp: "", descriptionEn: "", descriptionNp: "", icon: "Sliders", url: "" });
+    setEditingItemId(null);
+    showToast("success", "Utility tool record saved to staging deck.");
+  };
+
+  const handleDeleteTool = (id: string) => {
+    const updated = (stagingData.tools || []).filter(t => t.id !== id);
+    setStagingData(prev => ({ ...prev, tools: updated }));
+    showToast("success", "Tool removed from deck.");
+  };
+
+  const handleSaveService = () => {
+    if (!serviceForm.titleEn || !serviceForm.priceEn) {
+      showToast("error", "Service title and Price are required configuration parameters.");
+      return;
+    }
+    const updated = [...(stagingData.services || [])];
+    if (editingItemId) {
+      const idx = updated.findIndex(s => s.id === editingItemId);
+      if (idx !== -1) {
+        updated[idx] = { ...serviceForm, id: editingItemId };
+      }
+    } else {
+      updated.push({ ...serviceForm, id: "serv-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, services: updated }));
+    setServiceForm({ titleEn: "", titleNp: "", descriptionEn: "", descriptionNp: "", priceEn: "", priceNp: "", whatsappMessageEn: "", whatsappMessageNp: "", officialLink: "", icon: "Layout" });
+    setEditingItemId(null);
+    showToast("success", "Premium service configuration saved.");
+  };
+
+  const handleDeleteService = (id: string) => {
+    const updated = (stagingData.services || []).filter(s => s.id !== id);
+    setStagingData(prev => ({ ...prev, services: updated }));
+    showToast("success", "Service deleted.");
+  };
+
+  const handleSaveInterest = () => {
+    if (!interestForm.titleEn) {
+      showToast("error", "Interest title is required.");
+      return;
+    }
+    const updated = [...(stagingData.interests || [])];
+    if (editingItemId) {
+      const idx = updated.findIndex(i => i.id === editingItemId);
+      if (idx !== -1) {
+        updated[idx] = { ...interestForm, id: editingItemId };
+      }
+    } else {
+      updated.push({ ...interestForm, id: "int-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, interests: updated }));
+    setInterestForm({ titleEn: "", titleNp: "", descriptionEn: "", descriptionNp: "", icon: "Heart" });
+    setEditingItemId(null);
+    showToast("success", "Passion/Interest record saved.");
+  };
+
+  const handleDeleteInterest = (id: string) => {
+    const updated = (stagingData.interests || []).filter(i => i.id !== id);
+    setStagingData(prev => ({ ...prev, interests: updated }));
+    showToast("success", "Interest deleted.");
+  };
+
+  // Helper formatting for dynamic preview window checks
+  const getAnnouncementLineBreaksCount = () => {
+    const activeText = activeLangTab === "en" ? stagingData.popup?.textEn : stagingData.popup?.textNp;
+    if (!activeText) return 0;
+    return activeText.split("\n").length;
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#030712] flex items-center justify-center text-cyan-400 font-mono">
+        <div className="flex flex-col items-center space-y-4">
+          <RefreshCw className="h-10 w-10 animate-spin text-cyan-400" />
+          <span className="text-xs uppercase tracking-widest">Initializing Secure Terminal...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Login Form if NOT authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#030712] relative overflow-hidden flex items-center justify-center p-4">
+        {/* Interactive background canvas effect */}
+        <NetworkCanvas isDarkMode={true} />
+
+        {/* Global Toast Status Notice */}
+        {toast && (
+          <div className={`fixed top-5 right-5 z-50 flex items-center space-x-2 px-5 py-3 rounded-xl border shadow-xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 ${
+            toast.type === "success" 
+              ? "bg-green-950/90 border-green-500/40 text-green-300" 
+              : "bg-red-950/90 border-red-500/40 text-red-300"
+          }`}>
+            {toast.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+            <span className="text-xs font-mono font-bold tracking-tight">{toast.message}</span>
+          </div>
+        )}
+
+        {/* Login HUD Frame */}
+        <div className="relative w-full max-w-md bg-white/[0.02] border border-cyan-500/25 rounded-2xl p-6 md:p-8 backdrop-blur-2xl shadow-[0_0_25px_rgba(6,182,212,0.15)] text-white space-y-8 z-10">
+          
+          <div className="text-center space-y-2">
+            <div className="inline-flex p-3 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+              <Lock className="h-6 w-6 text-cyan-400 animate-pulse" />
+            </div>
+            <h2 className="text-xl font-bold tracking-wider font-mono bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent uppercase">
+              Secure CMS Login
+            </h2>
+            <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest leading-none">
+              Amit Joshi Administrative Console
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            {/* Email input field */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400 block">
+                Administrative Email
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@amitjoshi.info.np"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pl-10 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                />
+                <Mail className="h-4 w-4 text-gray-500 absolute left-3 top-3.5" />
+              </div>
+            </div>
+
+            {/* Password input field */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
+                  Password Key
+                </label>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[9px] font-mono text-purple-400 hover:text-cyan-300 uppercase tracking-wide focus:outline-none"
+                >
+                  Forgot Key?
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pl-10 pr-10 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                />
+                <Lock className="h-4 w-4 text-gray-500 absolute left-3 top-3.5" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-500 hover:text-white absolute right-3 top-3.5 transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Login trigger button */}
+            <button
+              type="submit"
+              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all active:scale-95 duration-150"
+            >
+              <span>Initialize Authorization</span>
+            </button>
+          </form>
+
+          {/* Quick instructions indicator block */}
+          <div className="pt-4 border-t border-white/5 flex justify-between text-[9px] font-mono text-gray-600 uppercase">
+            <span>Single-Device Session active</span>
+            <span>v1.0.4 - CJS Secure</span>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // Render Full cms Admin HUD if authenticated
+  return (
+    <div className="min-h-screen bg-[#030712] text-gray-100 flex flex-col justify-between">
+      
+      {/* Dynamic Background Network lines */}
+      <NetworkCanvas isDarkMode={true} />
+
+      {/* Global Toast Alerts */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 flex items-center space-x-2 px-5 py-3 rounded-xl border shadow-2xl backdrop-blur-xl animate-in slide-in-from-top-4 duration-300 ${
+          toast.type === "success" 
+            ? "bg-green-950/90 border-green-500/40 text-green-300" 
+            : "bg-red-950/90 border-red-500/40 text-red-300"
+        }`}>
+          {toast.type === "success" ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+          <span className="text-xs font-mono font-bold tracking-tight">{toast.message}</span>
+        </div>
+      )}
+
+      {/* ================= TELEMETRY HEADER & HUD SYSTEM ================= */}
+      <header className="sticky top-0 z-30 bg-[#030712]/90 border-b border-white/10 backdrop-blur-md p-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400">
+              <Settings className="h-5 w-5 animate-spin" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold font-mono text-white tracking-widest uppercase">
+                Administrative CMS HUD
+              </h1>
+              <p className="text-[10px] text-gray-400 font-mono tracking-wide">
+                User Authenticated: <span className="text-cyan-400 font-bold">{user.email}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* HUD Meta Analytics metrics */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] font-mono uppercase bg-white/[0.02] border border-white/5 rounded-xl px-4 py-2 text-gray-400">
+            <div className="flex items-center space-x-1.5 border-r border-white/5 pr-4">
+              <Calendar className="h-3.5 w-3.5 text-purple-400" />
+              <span>Prior Session: <span className="text-white">{stats.previousLogin}</span></span>
+            </div>
+            <div className="flex items-center space-x-1.5 border-r border-white/5 pr-4 pl-2">
+              <Users className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+              <span>Visits: <span className="text-white font-bold">{stats.visits}</span></span>
+            </div>
+            <div className="flex items-center space-x-1.5 pl-2">
+              <Database className="h-3.5 w-3.5 text-yellow-400" />
+              <span>Objects Tally: <span className="text-white font-bold">{stats.objectCount}</span></span>
+            </div>
+          </div>
+
+          {/* Quick HUD Navigation Trigger actions */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleSaveStaging}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-all active:scale-95 duration-100"
+              title="Saves configuration to database paths"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>Save Data</span>
+            </button>
+            <button
+              onClick={handleCommitLiveNow}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 text-white shadow-lg active:scale-95 duration-100"
+              title="Updates public client node instantly"
+            >
+              <PreviewIcon className="h-3.5 w-3.5 animate-pulse" />
+              <span>Live Now</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 bg-red-950/40 hover:bg-red-900/50 border border-red-500/30 text-red-400 hover:text-red-300 rounded-xl transition-all"
+              title="Safely exit admin workspace"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      {/* ================= CMS BODY MATRIX ================= */}
+      <main className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
+        
+        {/* LEFT COLUMN: Section switcher list (3 Cols) */}
+        <div className="lg:col-span-3 space-y-2 bg-white/[0.02] border border-white/5 rounded-2xl p-4 backdrop-blur-md">
+          <h3 className="text-[10px] font-mono font-bold tracking-widest text-gray-500 uppercase px-2 pb-2 border-b border-white/5 mb-3">
+            Manage Sections
+          </h3>
+          {[
+            { id: "header", label: "Favicons & Branding", icon: Layout },
+            { id: "biography", label: "Biographies", icon: Users },
+            { id: "socials", label: "Social Hub cards", icon: Landmark },
+            { id: "initiatives", label: "Strategic Initiatives", icon: BookOpen },
+            { id: "tools", label: "Utility Tool Deck", icon: Sliders },
+            { id: "education", label: "Academic Milestones", icon: GraduationCap },
+            { id: "services", label: "Premium Services", icon: Landmark },
+            { id: "interests", label: "Personal Passions", icon: Heart },
+            { id: "popup", label: "Announcement Popup", icon: Settings },
+            { id: "maps", label: "Google Maps Embeds", icon: MapPin }
+          ].map((sec) => {
+            const Icon = sec.icon;
+            const isActive = activeCmsSection === sec.id;
+            return (
+              <button
+                key={sec.id}
+                onClick={() => {
+                  setActiveCmsSection(sec.id as any);
+                  setEditingItemId(null);
+                }}
+                className={`w-full text-left inline-flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+                  isActive 
+                    ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-md" 
+                    : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${isActive ? "text-cyan-400 animate-pulse" : "text-gray-500"}`} />
+                <span>{sec.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* RIGHT COLUMN: Active Content Manager Block (9 Cols) */}
+        <div className="lg:col-span-9 space-y-6">
+          
+          {/* MULTILINGUAL SYNC TABS */}
+          <div className="flex justify-between items-center bg-white/[0.02] border border-white/5 rounded-2xl p-3 backdrop-blur-md">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-gray-500 pl-2">
+              Multilingual payload synchronizer
+            </span>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setActiveLangTab("en")}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
+                  activeLangTab === "en" 
+                    ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" 
+                    : "text-gray-400 hover:text-white hover:bg-white/5 border-transparent"
+                }`}
+              >
+                [English Data] <span className="text-[9px] text-cyan-500">*Required</span>
+              </button>
+              <button
+                onClick={() => setActiveLangTab("np")}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all ${
+                  activeLangTab === "np" 
+                    ? "bg-purple-500/10 text-purple-400 border-purple-500/20" 
+                    : "text-gray-400 hover:text-white hover:bg-white/5 border-transparent"
+                }`}
+              >
+                [Nepali Data] <span className="text-[9px] text-purple-500">Optional</span>
+              </button>
+            </div>
+          </div>
+
+          {/* DYNAMIC FORM SHELL CONTENT */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-md shadow-2xl space-y-6 text-xs">
+            
+            {/* ---------------- 1. SECTION: HEADER CONTROLS ---------------- */}
+            {activeCmsSection === "header" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Branding & Nav System Assets</h3>
+                  <p className="text-gray-500 mt-1">Live asset uploading and custom brand text definitions.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Brand Text input mapping */}
+                  {activeLangTab === "en" ? (
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Brand Name (En) *</label>
+                      <input 
+                        type="text" 
+                        value={stagingData.header?.brandTextEn || ""}
+                        onChange={(e) => updateHeaderField("brandTextEn", e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Brand Name (Np)</label>
+                      <input 
+                        type="text" 
+                        value={stagingData.header?.brandTextNp || ""}
+                        onChange={(e) => updateHeaderField("brandTextNp", e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+                  )}
+
+                  {/* Logo Image */}
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Official Brand Logo (Image/Base64)</label>
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="text" 
+                        value={stagingData.header?.logoUrl || ""}
+                        onChange={(e) => updateHeaderField("logoUrl", e.target.value)}
+                        placeholder="Direct asset URL"
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                      />
+                      <label className="cursor-pointer px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl font-bold uppercase tracking-wide hover:bg-white/10 text-cyan-400 text-center">
+                        Upload Image
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => convertToBase64(e, (b) => updateHeaderField("logoUrl", b))}
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                    {stagingData.header?.logoUrl && (
+                      <div className="mt-2">
+                        <img src={stagingData.header.logoUrl} alt="Logo Preview" className="h-10 w-10 rounded-full object-cover border border-white/20" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Favicon Image */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Official Site Favicon (URL/Base64)</label>
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="text" 
+                        value={stagingData.header?.faviconUrl || ""}
+                        onChange={(e) => updateHeaderField("faviconUrl", e.target.value)}
+                        placeholder="Direct asset URL"
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                      />
+                      <label className="cursor-pointer px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl font-bold uppercase tracking-wide hover:bg-white/10 text-cyan-400 text-center">
+                        Upload Icon
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => convertToBase64(e, (b) => updateHeaderField("faviconUrl", b))}
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 2. SECTION: BIOGRAPHIES ---------------- */}
+            {activeCmsSection === "biography" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Portraits & Biographies</h3>
+                  <p className="text-gray-500 mt-1">Staging biography summary records and full expandables.</p>
+                </div>
+
+                {/* ADVANCED RICH-TEXT COMPONENT GENERATOR (VIBGYOR Custom Colors) */}
+                <div className="p-4 bg-white/[0.01] border border-cyan-500/10 rounded-2xl space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2">
+                    <span className="font-mono font-bold tracking-wide uppercase text-cyan-400">Advanced Style Mixer Controls</span>
+                    <div className="flex items-center space-x-1 bg-black/40 p-1.5 rounded-lg border border-white/10">
+                      <button 
+                        type="button" 
+                        onClick={() => setRichTextConfig(prev => ({ ...prev, bold: !prev.bold }))}
+                        className={`p-1 rounded hover:bg-white/5 ${richTextConfig.bold ? "text-cyan-400 bg-white/5" : "text-gray-500"}`}
+                      >
+                        <Bold className="h-4 w-4" />
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setRichTextConfig(prev => ({ ...prev, italic: !prev.italic }))}
+                        className={`p-1 rounded hover:bg-white/5 ${richTextConfig.italic ? "text-cyan-400 bg-white/5" : "text-gray-500"}`}
+                      >
+                        <Italic className="h-4 w-4" />
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setRichTextConfig(prev => ({ ...prev, underline: !prev.underline }))}
+                        className={`p-1 rounded hover:bg-white/5 ${richTextConfig.underline ? "text-cyan-400 bg-white/5" : "text-gray-500"}`}
+                      >
+                        <Underline className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* VIBGYOR Mixer */}
+                  <div className="space-y-2">
+                    <span className="font-mono font-bold text-gray-500 uppercase text-[10px]">Color Palette Mixer (VIBGYOR Array)</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {vibgyorColors.map((color) => (
+                        <button
+                          key={color.name}
+                          type="button"
+                          onClick={() => setRichTextConfig(prev => ({ ...prev, color: color.hex }))}
+                          className="px-2 py-1.5 rounded-lg border border-white/15 hover:border-white/30 text-[10px] font-bold font-mono transition-all uppercase flex items-center space-x-1 text-white"
+                          style={{ borderLeft: `4px solid ${color.hex}` }}
+                        >
+                          <span>{color.name}</span>
+                        </button>
+                      ))}
+                      <input 
+                        type="color" 
+                        value={richTextConfig.color}
+                        onChange={(e) => setRichTextConfig(prev => ({ ...prev, color: e.target.value }))}
+                        className="h-7 w-7 rounded cursor-pointer bg-transparent border-0" 
+                      />
+                      <input 
+                        type="text" 
+                        value={richTextConfig.color}
+                        onChange={(e) => setRichTextConfig(prev => ({ ...prev, color: e.target.value }))}
+                        className="bg-black/30 border border-white/10 rounded-md text-[10px] font-mono px-2 py-1 w-20 text-white" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Biography Summary */}
+                  {activeLangTab === "en" ? (
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Biography Executive Summary (En) *</label>
+                      <textarea
+                        rows={3}
+                        value={stagingData.homepage?.biographySummaryEn || ""}
+                        onChange={(e) => updateStagingField("homepage", "biographySummaryEn", e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white"
+                        style={{
+                          fontWeight: richTextConfig.bold ? "bold" : "normal",
+                          fontStyle: richTextConfig.italic ? "italic" : "normal",
+                          textDecoration: richTextConfig.underline ? "underline" : "none",
+                          color: richTextConfig.color
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Biography Executive Summary (Np)</label>
+                      <textarea
+                        rows={3}
+                        value={stagingData.homepage?.biographySummaryNp || ""}
+                        onChange={(e) => updateStagingField("homepage", "biographySummaryNp", e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white"
+                        style={{
+                          fontWeight: richTextConfig.bold ? "bold" : "normal",
+                          fontStyle: richTextConfig.italic ? "italic" : "normal",
+                          textDecoration: richTextConfig.underline ? "underline" : "none",
+                          color: richTextConfig.color
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Biography Full */}
+                  {activeLangTab === "en" ? (
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Biography Full Story (En) *</label>
+                      <textarea
+                        rows={8}
+                        value={stagingData.homepage?.biographyFullEn || ""}
+                        onChange={(e) => updateStagingField("homepage", "biographyFullEn", e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white leading-relaxed font-sans"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Biography Full Story (Np)</label>
+                      <textarea
+                        rows={8}
+                        value={stagingData.homepage?.biographyFullNp || ""}
+                        onChange={(e) => updateStagingField("homepage", "biographyFullNp", e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white leading-relaxed font-sans"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 3. SECTION: SOCIAL HUB CARDS ---------------- */}
+            {activeCmsSection === "socials" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Social Media Hub Node Setup</h3>
+                  <p className="text-gray-500 mt-1">Manage infinite list arrays of external profile configurations.</p>
+                </div>
+
+                {/* Node Builder Form */}
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Platform Type</label>
+                    <select
+                      value={socialForm.platform}
+                      onChange={(e) => setSocialForm(prev => ({ ...prev, platform: e.target.value, icon: e.target.value === "TikTok" ? "Music" : e.target.value === "WhatsApp" ? "MessageSquare" : e.target.value === "Email" ? "Mail" : e.target.value }))}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                    >
+                      <option value="Facebook">Facebook</option>
+                      <option value="Instagram">Instagram</option>
+                      <option value="TikTok">TikTok</option>
+                      <option value="WhatsApp">WhatsApp</option>
+                      <option value="Email">Email</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Redirect URL Path *</label>
+                    <input 
+                      type="text" 
+                      value={socialForm.url}
+                      onChange={(e) => setSocialForm(prev => ({ ...prev, url: e.target.value }))}
+                      placeholder="e.g., https://facebook.com/username"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                    />
+                  </div>
+
+                  {activeLangTab === "en" ? (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Title / Description Brief (En) *</label>
+                      <input 
+                        type="text" 
+                        value={socialForm.titleEn}
+                        onChange={(e) => setSocialForm(prev => ({ ...prev, titleEn: e.target.value }))}
+                        placeholder="e.g., Follow Amit on Facebook for technical postings"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Title / Description Brief (Np)</label>
+                      <input 
+                        type="text" 
+                        value={socialForm.titleNp}
+                        onChange={(e) => setSocialForm(prev => ({ ...prev, titleNp: e.target.value }))}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                      />
+                    </div>
+                  )}
+
+                  <div className="md:col-span-2 flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveSocial}
+                      className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>{editingItemId ? "Save Updates" : "Add Node"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Staged Items Listing */}
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Staging Items Array</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(stagingData.socials || []).map((soc) => (
+                      <div key={soc.id} className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                        <div className="space-y-1">
+                          <span className="px-2 py-0.5 rounded text-[9px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 uppercase font-mono font-bold">{soc.platform}</span>
+                          <h5 className="text-[11px] font-bold text-white mt-1.5 line-clamp-1">{activeLangTab === "en" ? soc.titleEn : soc.titleNp}</h5>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => { setEditingItemId(soc.id); setSocialForm({ ...soc }); }} className="p-1.5 hover:text-cyan-400"><Edit3 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDeleteSocial(soc.id)} className="p-1.5 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 4. SECTION: STRATEGIC INITIATIVES ---------------- */}
+            {activeCmsSection === "initiatives" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Key Strategic Initiatives</h3>
+                  <p className="text-gray-500 mt-1">Staging causes, split panels, and native Facebook iframe insertions.</p>
+                </div>
+
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl space-y-4">
+                  {activeLangTab === "en" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Initiative Title (En) *</label>
+                        <input type="text" value={initiativeForm.titleEn} onChange={(e) => setInitiativeForm(prev => ({ ...prev, titleEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Description text (En) *</label>
+                        <textarea rows={3} value={initiativeForm.textEn} onChange={(e) => setInitiativeForm(prev => ({ ...prev, textEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Full Expandable Impact story (En)</label>
+                        <textarea rows={5} value={initiativeForm.readMoreEn} onChange={(e) => setInitiativeForm(prev => ({ ...prev, readMoreEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Initiative Title (Np)</label>
+                        <input type="text" value={initiativeForm.titleNp} onChange={(e) => setInitiativeForm(prev => ({ ...prev, titleNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Description text (Np)</label>
+                        <textarea rows={3} value={initiativeForm.textNp} onChange={(e) => setInitiativeForm(prev => ({ ...prev, textNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Full Expandable Impact story (Np)</label>
+                        <textarea rows={5} value={initiativeForm.readMoreNp} onChange={(e) => setInitiativeForm(prev => ({ ...prev, readMoreNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Facebook Iframe Embed Element Payload</label>
+                    <textarea rows={3} value={initiativeForm.fbIframe} onChange={(e) => setInitiativeForm(prev => ({ ...prev, fbIframe: e.target.value }))} placeholder="Paste <iframe> from Facebook developer plugin here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono" />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button type="button" onClick={handleSaveInitiative} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                      <Plus className="h-4 w-4" />
+                      <span>Save Strategic Initiative</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Initiatives listings */}
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Current initiatives</h4>
+                  <div className="space-y-2">
+                    {(stagingData.initiatives || []).map((item) => (
+                      <div key={item.id} className="p-4 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                        <div>
+                          <h5 className="font-bold text-sm text-white">{activeLangTab === "en" ? item.titleEn : item.titleNp}</h5>
+                          <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{activeLangTab === "en" ? item.textEn : item.textNp}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => { setEditingItemId(item.id); setInitiativeForm({ ...item }); }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => handleDeleteInitiative(item.id)} className="p-2 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 5. SECTION: UTILITY TOOL DECK ---------------- */}
+            {activeCmsSection === "tools" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Utility Tool & Script Deck</h3>
+                  <p className="text-gray-500 mt-1">Manage digital toolkit arrays. Built to support truncation past 15 items automatically.</p>
+                </div>
+
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeLangTab === "en" ? (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Tool Name (En) *</label>
+                        <input type="text" value={toolForm.nameEn} onChange={(e) => setToolForm(prev => ({ ...prev, nameEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Category Title (En) *</label>
+                        <input type="text" value={toolForm.categoryEn} onChange={(e) => setToolForm(prev => ({ ...prev, categoryEn: e.target.value }))} placeholder="e.g., Date Utilities" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Short description (En) *</label>
+                        <input type="text" value={toolForm.descriptionEn} onChange={(e) => setToolForm(prev => ({ ...prev, descriptionEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Tool Name (Np)</label>
+                        <input type="text" value={toolForm.nameNp} onChange={(e) => setToolForm(prev => ({ ...prev, nameNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Category Title (Np)</label>
+                        <input type="text" value={toolForm.categoryNp} onChange={(e) => setToolForm(prev => ({ ...prev, categoryNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Short description (Np)</label>
+                        <input type="text" value={toolForm.descriptionNp} onChange={(e) => setToolForm(prev => ({ ...prev, descriptionNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Lucide Icon identifier string</label>
+                    <select value={toolForm.icon} onChange={(e) => setToolForm(prev => ({ ...prev, icon: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white">
+                      <option value="Calendar">Calendar</option>
+                      <option value="Type">Type</option>
+                      <option value="Coins">Coins</option>
+                      <option value="MapPin">MapPin</option>
+                      <option value="Keyboard">Keyboard</option>
+                      <option value="Calculator">Calculator</option>
+                      <option value="Mic">Mic</option>
+                      <option value="Volume2">Volume2</option>
+                      <option value="Image">Image</option>
+                      <option value="Lock">Lock</option>
+                      <option value="QrCode">QrCode</option>
+                      <option value="Code">Code</option>
+                      <option value="FileText">FileText</option>
+                      <option value="Cpu">Cpu</option>
+                      <option value="Timer">Timer</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Official tool Redirect URL *</label>
+                    <input type="text" value={toolForm.url} onChange={(e) => setToolForm(prev => ({ ...prev, url: e.target.value }))} placeholder="e.g., https://amitjoshi.info.np/tools/calendar" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                  </div>
+
+                  <div className="md:col-span-2 flex justify-end">
+                    <button type="button" onClick={handleSaveTool} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                      <Plus className="h-4 w-4" />
+                      <span>Save Tool</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Staged tool cards ({stagingData.tools?.length || 0})</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(stagingData.tools || []).map((t) => (
+                      <div key={t.id} className="p-3 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                        <div>
+                          <span className="text-[9px] font-mono font-bold text-purple-400 block">{activeLangTab === "en" ? t.categoryEn : t.categoryNp}</span>
+                          <h5 className="font-bold text-white mt-1">{activeLangTab === "en" ? t.nameEn : t.nameNp}</h5>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => { setEditingItemId(t.id); setToolForm({ ...t }); }} className="p-1.5 text-gray-400 hover:text-cyan-400"><Edit3 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDeleteTool(t.id)} className="p-1.5 text-gray-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 6. SECTION: ACADEMIC MILESTONES ---------------- */}
+            {activeCmsSection === "education" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Academic & Institutional History</h3>
+                  <p className="text-gray-500 mt-1">Manage chronological milestones and deep descriptive pop-up portfolios.</p>
+                </div>
+
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl space-y-4">
+                  {activeLangTab === "en" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Institution (En) *</label>
+                        <input type="text" value={educationForm.institutionEn} onChange={(e) => setEducationForm(prev => ({ ...prev, institutionEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Degree (En) *</label>
+                        <input type="text" value={educationForm.degreeEn} onChange={(e) => setEducationForm(prev => ({ ...prev, degreeEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Attendance Years (En) *</label>
+                        <input type="text" value={educationForm.yearsEn} onChange={(e) => setEducationForm(prev => ({ ...prev, yearsEn: e.target.value }))} placeholder="e.g., 2014 - 2018" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Summary brief (En) *</label>
+                        <input type="text" value={educationForm.descriptionEn} onChange={(e) => setEducationForm(prev => ({ ...prev, descriptionEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Full details popup payload (En)</label>
+                        <textarea rows={4} value={educationForm.detailsEn} onChange={(e) => setEducationForm(prev => ({ ...prev, detailsEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white leading-relaxed" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Institution (Np)</label>
+                        <input type="text" value={educationForm.institutionNp} onChange={(e) => setEducationForm(prev => ({ ...prev, institutionNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Degree (Np)</label>
+                        <input type="text" value={educationForm.degreeNp} onChange={(e) => setEducationForm(prev => ({ ...prev, degreeNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Attendance Years (Np)</label>
+                        <input type="text" value={educationForm.yearsNp} onChange={(e) => setEducationForm(prev => ({ ...prev, yearsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Summary brief (Np)</label>
+                        <input type="text" value={educationForm.descriptionNp} onChange={(e) => setEducationForm(prev => ({ ...prev, descriptionNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Full details popup payload (Np)</label>
+                        <textarea rows={4} value={educationForm.detailsNp} onChange={(e) => setEducationForm(prev => ({ ...prev, detailsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white leading-relaxed" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Student portal Navigation URL</label>
+                    <input type="text" value={educationForm.portalUrl} onChange={(e) => setEducationForm(prev => ({ ...prev, portalUrl: e.target.value }))} placeholder="https://portal.university.edu" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button type="button" onClick={handleSaveEducation} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                      <Plus className="h-4 w-4" />
+                      <span>Save Education Card</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Academic Staging items</h4>
+                  <div className="space-y-2">
+                    {(stagingData.education || []).map((e) => (
+                      <div key={e.id} className="p-3 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                        <div>
+                          <span className="text-[9px] font-mono font-bold text-cyan-400 block">{activeLangTab === "en" ? e.yearsEn : e.yearsNp}</span>
+                          <h5 className="font-bold text-white mt-1">{activeLangTab === "en" ? e.degreeEn : e.degreeNp}</h5>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => { setEditingItemId(e.id); setEducationForm({ ...e }); }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => handleDeleteEducation(e.id)} className="p-2 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 7. SECTION: PREMIUM SERVICES ---------------- */}
+            {activeCmsSection === "services" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Professional Services Array</h3>
+                  <p className="text-gray-500 mt-1">Configure premium pricing cards complete with WhatsApp pre-filled automated responses.</p>
+                </div>
+
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl space-y-4">
+                  {activeLangTab === "en" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Service Title (En) *</label>
+                        <input type="text" value={serviceForm.titleEn} onChange={(e) => setServiceForm(prev => ({ ...prev, titleEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Description Brief (En) *</label>
+                        <textarea rows={3} value={serviceForm.descriptionEn} onChange={(e) => setServiceForm(prev => ({ ...prev, descriptionEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Service Price Tag (En) *</label>
+                        <input type="text" value={serviceForm.priceEn} onChange={(e) => setServiceForm(prev => ({ ...prev, priceEn: e.target.value }))} placeholder="e.g., NPR 150,000 onwards" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">WhatsApp Pre-filled message (En) *</label>
+                        <textarea rows={2} value={serviceForm.whatsappMessageEn} onChange={(e) => setServiceForm(prev => ({ ...prev, whatsappMessageEn: e.target.value }))} placeholder="Auto-fills client WhatsApp window when clicked" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Service Title (Np)</label>
+                        <input type="text" value={serviceForm.titleNp} onChange={(e) => setServiceForm(prev => ({ ...prev, titleNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Description Brief (Np)</label>
+                        <textarea rows={3} value={serviceForm.descriptionNp} onChange={(e) => setServiceForm(prev => ({ ...prev, descriptionNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Service Price Tag (Np)</label>
+                        <input type="text" value={serviceForm.priceNp} onChange={(e) => setServiceForm(prev => ({ ...prev, priceNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">WhatsApp Pre-filled message (Np)</label>
+                        <textarea rows={2} value={serviceForm.whatsappMessageNp} onChange={(e) => setServiceForm(prev => ({ ...prev, whatsappMessageNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase">Lucide Icon name</label>
+                      <select value={serviceForm.icon} onChange={(e) => setServiceForm(prev => ({ ...prev, icon: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white">
+                        <option value="Layout">Layout</option>
+                        <option value="ShieldAlert">ShieldAlert</option>
+                        <option value="Gauge">Gauge</option>
+                        <option value="Sliders">Sliders</option>
+                        <option value="Cpu">Cpu</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase">Official Info Link</label>
+                      <input type="text" value={serviceForm.officialLink} onChange={(e) => setServiceForm(prev => ({ ...prev, officialLink: e.target.value }))} placeholder="https://amitjoshi.info.np/services/enterprise" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button type="button" onClick={handleSaveService} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                      <Plus className="h-4 w-4" />
+                      <span>Save Service</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Staged services</h4>
+                  <div className="space-y-2">
+                    {(stagingData.services || []).map((s) => (
+                      <div key={s.id} className="p-3 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                        <div>
+                          <span className="px-2 py-0.5 rounded text-[9px] bg-cyan-500/10 text-cyan-400 font-mono font-bold uppercase">{activeLangTab === "en" ? s.priceEn : s.priceNp}</span>
+                          <h5 className="font-bold text-white mt-1.5">{activeLangTab === "en" ? s.titleEn : s.titleNp}</h5>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => { setEditingItemId(s.id); setServiceForm({ ...s }); }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => handleDeleteService(s.id)} className="p-2 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 8. SECTION: ANNOUNCEMENT POPUP ---------------- */}
+            {activeCmsSection === "popup" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Administrative Global Announcement Popup</h3>
+                  <p className="text-gray-500 mt-1">Configure active status, banners, line-break separators, and visual previews.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Controls Column */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between bg-white/5 border border-white/15 p-4 rounded-xl">
+                      <span className="font-mono font-bold text-gray-300 uppercase">Popup State Status</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={stagingData.popup?.active || false}
+                          onChange={(e) => updateStagingField("popup", "active", e.target.checked)}
+                          className="sr-only peer" 
+                        />
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                      </label>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase">Banner Image Link (URL/Base64)</label>
+                      <div className="flex space-x-2">
+                        <input 
+                          type="text" 
+                          value={stagingData.popup?.imageUrl || ""}
+                          onChange={(e) => updateStagingField("popup", "imageUrl", e.target.value)}
+                          className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                        />
+                        <label className="cursor-pointer px-3 py-2 bg-white/5 border border-white/10 rounded-xl font-bold uppercase text-cyan-400 text-center">
+                          Upload
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => convertToBase64(e, (b) => updateStagingField("popup", "imageUrl", b))}
+                            className="hidden" 
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {activeLangTab === "en" ? (
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Announcement Description Text (En) *</label>
+                        <textarea rows={5} value={stagingData.popup?.textEn || ""} onChange={(e) => updateStagingField("popup", "textEn", e.target.value)} placeholder="Exceeding 8 lines automatically generates a 'Show More' separator node." className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Announcement Description Text (Np)</label>
+                        <textarea rows={5} value={stagingData.popup?.textNp || ""} onChange={(e) => updateStagingField("popup", "textNp", e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {activeLangTab === "en" ? (
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-400 uppercase">Button Label (En)</label>
+                          <input type="text" value={stagingData.popup?.buttonEn || ""} onChange={(e) => updateStagingField("popup", "buttonEn", e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-purple-400 uppercase">Button Label (Np)</label>
+                          <input type="text" value={stagingData.popup?.buttonNp || ""} onChange={(e) => updateStagingField("popup", "buttonNp", e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Button Redirect URL</label>
+                        <input type="text" value={stagingData.popup?.buttonUrl || ""} onChange={(e) => updateStagingField("popup", "buttonUrl", e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Desktop Real-Time Preview Module */}
+                  <div className="bg-black/50 border border-cyan-500/20 rounded-2xl p-4 space-y-4">
+                    <span className="font-mono font-bold uppercase tracking-wider text-[10px] text-cyan-400 flex items-center space-x-1.5">
+                      <PreviewIcon className="h-3.5 w-3.5" />
+                      <span>Real-time Live Desktop Preview</span>
+                    </span>
+
+                    <div className="border border-white/10 rounded-xl bg-gray-950 p-4 relative overflow-hidden shadow-inner space-y-3 text-white">
+                      {stagingData.popup?.imageUrl && (
+                        <div className="h-28 w-full rounded-lg overflow-hidden bg-white/5 relative border border-white/5">
+                          <img src={stagingData.popup.imageUrl} alt="Banner Preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <span className="px-2 py-0.5 rounded text-[8px] bg-cyan-500 text-black font-bold uppercase tracking-wider">Announcement</span>
+                        <p className="text-[11px] leading-relaxed text-gray-300 max-h-24 overflow-y-auto whitespace-pre-line">
+                          {activeLangTab === "en" ? stagingData.popup?.textEn : stagingData.popup?.textNp}
+                        </p>
+                        {getAnnouncementLineBreaksCount() > 8 && (
+                          <div className="text-[9px] text-cyan-400 font-mono text-center border-t border-dashed border-white/10 pt-1">* Show More separator generated *</div>
+                        )}
+                        {stagingData.popup?.buttonUrl && (
+                          <div className="text-center bg-cyan-500 text-black font-bold uppercase tracking-wide text-[9px] py-1.5 rounded-lg font-mono">
+                            {activeLangTab === "en" ? stagingData.popup?.buttonEn : stagingData.popup?.buttonNp}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 9. SECTION: MAPS EMBEDS ---------------- */}
+            {activeCmsSection === "maps" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Google Maps embed URLs</h3>
+                  <p className="text-gray-500 mt-1">Configure iframe paths for Permanent and Temporary address cards.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Permanent Address Map link (src="..." url)</label>
+                    <textarea rows={3} value={stagingData.maps?.permanentUrl || ""} onChange={(e) => updateStagingField("maps", "permanentUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Temporary Address Map link (src="..." url)</label>
+                    <textarea rows={3} value={stagingData.maps?.temporaryUrl || ""} onChange={(e) => updateStagingField("maps", "temporaryUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- 10. SECTION: PERSONAL INTERESTS ---------------- */}
+            {activeCmsSection === "interests" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Personal Passions Portal</h3>
+                  <p className="text-gray-500 mt-1">Manage interactive interest cards displayed on the portfolio.</p>
+                </div>
+
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeLangTab === "en" ? (
+                    <>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Interest Title (En) *</label>
+                        <input type="text" value={interestForm.titleEn} onChange={(e) => setInterestForm(prev => ({ ...prev, titleEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Short description (En) *</label>
+                        <textarea rows={2} value={interestForm.descriptionEn} onChange={(e) => setInterestForm(prev => ({ ...prev, descriptionEn: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Interest Title (Np)</label>
+                        <input type="text" value={interestForm.titleNp} onChange={(e) => setInterestForm(prev => ({ ...prev, titleNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Short description (Np)</label>
+                        <textarea rows={2} value={interestForm.descriptionNp} onChange={(e) => setInterestForm(prev => ({ ...prev, descriptionNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase">Lucide Icon name</label>
+                    <select value={interestForm.icon} onChange={(e) => setInterestForm(prev => ({ ...prev, icon: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white">
+                      <option value="Heart">Heart</option>
+                      <option value="Server">Server</option>
+                      <option value="PenTool">PenTool</option>
+                      <option value="BookOpen">BookOpen</option>
+                      <option value="Cpu">Cpu</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2 flex justify-end">
+                    <button type="button" onClick={handleSaveInterest} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                      <Plus className="h-4 w-4" />
+                      <span>Save Interest</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Staged passions</h4>
+                  <div className="space-y-2">
+                    {(stagingData.interests || []).map((i) => (
+                      <div key={i.id} className="p-3 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                        <div>
+                          <h5 className="font-bold text-white">{activeLangTab === "en" ? i.titleEn : i.titleNp}</h5>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => { setEditingItemId(i.id); setInterestForm({ ...i }); }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => handleDeleteInterest(i.id)} className="p-2 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+
+      </main>
+
+      {/* ================= CMS FOOTER ================= */}
+      <footer className="py-6 border-t border-white/10 bg-black/30 text-center text-[10px] font-mono text-gray-500 uppercase tracking-widest relative z-10">
+        Amit Joshi CMS Dashboard HUD &bull; Security Guard Active &bull; 2026 Edition
+      </footer>
+
+    </div>
+  );
+}
+
+// Render root element
+const container = document.getElementById("root");
+if (container && window.location.pathname.includes("dashboard.html")) {
+  const root = createRoot(container);
+  root.render(<Dashboard />);
+}
