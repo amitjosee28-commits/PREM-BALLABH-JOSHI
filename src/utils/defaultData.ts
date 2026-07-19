@@ -123,7 +123,7 @@ export interface PortfolioData {
 export const defaultPortfolioData: PortfolioData = {
   header: {
     logoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    faviconUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=32&auto=format&fit=crop&q=80",
+    faviconUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     brandTextEn: "Amit Joshi",
     brandTextNp: "अमित जोशी"
   },
