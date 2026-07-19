@@ -8,7 +8,8 @@ import { getNepalBSAndGregorian } from "./utils/date";
 import { 
   Sun, Moon, Search, Globe, ChevronDown, Facebook, 
   Instagram, MessageSquare, Mail, Play, Sparkles, BookOpen, Clock, 
-  Sliders, GraduationCap, Heart, Landmark, MapPin, ExternalLink, Menu, X
+  Sliders, GraduationCap, Heart, Landmark, MapPin, ExternalLink, Menu, X,
+  FileText, Image as ImageIcon, ShieldCheck, FileSignature, Download
 } from "lucide-react";
 
 // Components
@@ -43,6 +44,13 @@ export default function App() {
 
   // Biography Modal state
   const [isBioOpen, setIsBioOpen] = useState(false);
+
+  // Legal Modal (Privacy & Terms) state
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalContent, setLegalModalContent] = useState({ title: "", content: "" });
+
+  // Downloads Modal state
+  const [isDownloadsModalOpen, setIsDownloadsModalOpen] = useState(false);
 
   // Ken Burns Cinematic Slider state
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -197,6 +205,21 @@ export default function App() {
       isDarkMode ? "bg-[#030712]" : "bg-slate-50 text-slate-900"
     }`}>
       
+      {/* VIBROYG SVG Def for icon stroke */}
+      <svg width="0" height="0" className="absolute pointer-events-none">
+        <defs>
+          <linearGradient id="vibroyg-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#8f00ff" />
+            <stop offset="16.6%" stopColor="#4b0082" />
+            <stop offset="33.3%" stopColor="#0000ff" />
+            <stop offset="50%" stopColor="#ff0000" />
+            <stop offset="66.6%" stopColor="#ff7f00" />
+            <stop offset="83.3%" stopColor="#ffff00" />
+            <stop offset="100%" stopColor="#00ff00" />
+          </linearGradient>
+        </defs>
+      </svg>
+
       {/* HTML5 Canvas Network Background */}
       <NetworkCanvas isDarkMode={isDarkMode} />
 
@@ -217,149 +240,139 @@ export default function App() {
       {/* ================= HEADER SYSTEM ================= */}
       <header className={`sticky top-0 z-40 transition-all duration-300 border-b ${
         isDarkMode 
-          ? "bg-[#030712]/85 border-white/5 backdrop-blur-md" 
-          : "bg-white/85 border-slate-200 backdrop-blur-md text-slate-800"
+          ? "bg-[#030712]/95 border-white/5 backdrop-blur-md text-white" 
+          : "bg-white/95 border-slate-200/80 backdrop-blur-md text-slate-800"
       }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          
-          {/* Logo & Brand text */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNavScroll("home-section")}>
-            {headerData.logoUrl && (
-              <img 
-                src={headerData.logoUrl} 
-                alt="Amit Joshi Logo" 
-                className="h-10 w-10 rounded-full object-cover border-2 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-                referrerPolicy="no-referrer"
-              />
-            )}
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent font-sans">
-                {lang === "en" ? headerData.brandTextEn : headerData.brandTextNp}
-              </span>
-              <span className="text-[10px] font-mono uppercase tracking-wider text-gray-400 flex items-center space-x-1">
-                <Sparkles className="h-3 w-3 text-cyan-400 animate-spin" />
-                <span data-en="Connect with Me" data-np="मसंग जोडिनुहोस्">
-                  {lang === "en" ? "Connect with Me" : "मसंग जोडिनुहोस्"}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Dynamic display of Nepal Local Time in an animated linear-gradient RGB loop */}
-          <div className="hidden lg:flex items-center space-x-2 px-4 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/5 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-cyan-500/10 animate-gradient-x pointer-events-none" />
-            <Clock className="h-3.5 w-3.5 text-cyan-400 animate-pulse relative z-10" />
-            <span className="text-[11px] font-mono font-bold bg-gradient-to-r from-cyan-400 via-pink-400 to-purple-400 bg-size-200 animate-text-gradient bg-clip-text text-transparent relative z-10">
-              🇳🇵 {lang === "en" ? nepalTime.bsStrEn : nepalTime.bsStrNp}
-            </span>
-          </div>
-
-          {/* Navigation nodes (Desktop) */}
-          <nav className="hidden lg:flex items-center space-x-6 text-xs font-semibold uppercase tracking-wider">
-            <button onClick={() => handleNavScroll("home-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Home" : "गृहपृष्ठ"}
-            </button>
-            <button onClick={() => handleNavScroll("social-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Social Hub" : "सामाजिक केन्द्र"}
-            </button>
-            <button onClick={() => handleNavScroll("initiatives-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Initiatives" : "पहलहरू"}
-            </button>
-            <button onClick={() => handleNavScroll("tools-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Tools" : "उपकरणहरू"}
-            </button>
-            <button onClick={() => handleNavScroll("education-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Education" : "शिक्षा"}
-            </button>
-            {portfolioData.blogs?.active && (
-              <button onClick={() => handleNavScroll("blogs-section")} className="hover:text-cyan-400 transition-colors">
-                {lang === "en" ? "Blogs" : "ब्लग"}
-              </button>
-            )}
-            <button onClick={() => handleNavScroll("services-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Services" : "सेवाहरू"}
-            </button>
-            <button onClick={() => handleNavScroll("contact-section")} className="hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Contact" : "सम्पर्क"}
-            </button>
-          </nav>
-
-          {/* Quick Controls: Search, Theme, Lang, Dropdown */}
-          <div className="flex items-center space-x-3">
-            
-            {/* Search emulator */}
-            <form onSubmit={handleSearch} className="hidden sm:flex items-center relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === "en" ? "Smart search..." : "खोज्नुहोस्..."}
-                className={`rounded-full px-3 py-1.5 pl-8 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 w-32 focus:w-48 transition-all duration-300 ${
-                  isDarkMode 
-                    ? "bg-white/5 border border-white/10 text-white placeholder-gray-500" 
-                    : "bg-slate-100 border border-slate-300 text-slate-800 placeholder-slate-400"
-                }`}
-              />
-              <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 pointer-events-none" />
-            </form>
-
-            {/* Language toggle */}
-            <button
-              onClick={() => setLang(lang === "en" ? "np" : "en")}
-              className={`p-2 rounded-xl border transition-all ${
-                isDarkMode 
-                  ? "bg-white/5 border-white/10 hover:bg-white/15 text-cyan-400" 
-                  : "bg-white border-slate-200 hover:bg-slate-100 text-slate-800"
-              }`}
-              title={lang === "en" ? "Switch to Nepali" : "English मा परिवर्तन गर्नुहोस्"}
-            >
-              <Globe className="h-4 w-4" />
-            </button>
-
-            {/* Theme switcher */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-xl border transition-all ${
-                isDarkMode 
-                  ? "bg-white/5 border-white/10 hover:bg-white/15 text-yellow-400" 
-                  : "bg-white border-slate-200 hover:bg-slate-100 text-[#8b5cf6]"
-              }`}
-              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-
-            {/* Connect with Me Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowConnectDropdown(!showConnectDropdown)}
-                className="hidden md:inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white shadow-lg shadow-cyan-500/10 active:scale-95 duration-150"
-              >
-                <span>{lang === "en" ? "Connect" : "जोडिनुहोस्"}</span>
-                <ChevronDown className={`h-3 w-3 transform transition-transform ${showConnectDropdown ? "rotate-180" : ""}`} />
-              </button>
-
-              {showConnectDropdown && (
-                <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-2xl border p-2 z-50 animate-in fade-in slide-in-from-top-3 duration-200 ${
-                  isDarkMode 
-                    ? "bg-gray-900/95 border-white/10 text-gray-200" 
-                    : "bg-white border-slate-200 text-slate-800"
-                }`}>
-                  <a href="mailto:amit@amitjoshi.info.np" className="flex items-center space-x-2 px-3 py-2 rounded-lg text-xs hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors">
-                    <Mail className="h-4 w-4" />
-                    <span>Email Official</span>
-                  </a>
-                  <a href="https://wa.me/9779800000000" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-2 rounded-lg text-xs hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>WhatsApp Chat</span>
-                  </a>
-                  <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 px-3 py-2 rounded-lg text-xs hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors">
-                    <Facebook className="h-4 w-4" />
-                    <span>Facebook Profile</span>
-                  </a>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20 gap-4">
+            {/* Left Side: Logo and Brand Text */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 cursor-pointer" onClick={() => handleNavScroll("home-section")}>
+                {headerData.logoUrl && (
+                  <img 
+                    src={headerData.logoUrl} 
+                    alt="Amit Joshi Logo" 
+                    className="h-16 w-16 rounded-full object-cover border-2 border-cyan-400 ring-4 ring-cyan-500/10 shadow-[0_0_20px_rgba(6,182,212,0.75)] hover:scale-105 hover:shadow-[0_0_25px_rgba(6,182,212,0.9)] transition-all duration-300"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="flex flex-col justify-center">
+                  <span className="text-xl md:text-2xl font-extrabold tracking-tight whitespace-nowrap bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent font-sans leading-none pb-1">
+                    {lang === "en" ? headerData.brandTextEn : headerData.brandTextNp}
+                  </span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNavScroll("contact-section");
+                    }} 
+                    className="text-xs font-mono uppercase tracking-wider text-gray-400 hover:text-cyan-400 transition-colors flex items-center space-x-1 leading-none whitespace-nowrap cursor-pointer text-left focus:outline-none"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+                    <span data-en="Connect with Me" data-np="मसंग जोडिनुहोस्">
+                      {lang === "en" ? "Connect with Me" : "मसंग जोडिनुहोस्"}
+                    </span>
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
+
+            {/* Right Side: Navigation nodes (Desktop) & Quick Controls */}
+            <div className="flex items-center space-x-4 lg:space-x-8">
+            {/* Navigation nodes (Desktop) */}
+            <nav className="hidden lg:flex items-center space-x-5 text-xs font-semibold uppercase tracking-wider">
+              <button onClick={() => handleNavScroll("home-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Home" : "गृहपृष्ठ"}
+              </button>
+              <button onClick={() => handleNavScroll("social-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Social Media" : "सामाजिक मिडिया"}
+              </button>
+              <button onClick={() => handleNavScroll("initiatives-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Initiatives" : "पहलहरू"}
+              </button>
+              <button onClick={() => handleNavScroll("tools-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Tools" : "उपकरणहरू"}
+              </button>
+              <button onClick={() => handleNavScroll("education-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Education" : "शिक्षा"}
+              </button>
+              {portfolioData.blogs?.active && (
+                <button onClick={() => handleNavScroll("blogs-section")} className="hover:text-cyan-400 transition-colors">
+                  {lang === "en" ? "Blogs" : "ब्लग"}
+                </button>
+              )}
+              <button onClick={() => handleNavScroll("services-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Services" : "सेवाहरू"}
+              </button>
+              <button onClick={() => handleNavScroll("contact-section")} className="hover:text-cyan-400 transition-colors">
+                {lang === "en" ? "Contact" : "सम्पर्क"}
+              </button>
+            </nav>
+
+            {/* Quick Controls: Search, Theme, Lang, Dropdown */}
+            <div className="flex items-center space-x-2.5 sm:space-x-3">
+              
+              {/* Search emulator */}
+              <form onSubmit={handleSearch} className="hidden sm:flex items-center relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={lang === "en" ? "Smart search..." : "खोज्नुहोस्..."}
+                  className={`rounded-full px-3 py-1.5 pl-8 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 w-24 lg:w-32 focus:lg:w-44 transition-all duration-300 ${
+                    isDarkMode 
+                      ? "bg-white/5 border border-white/10 text-white placeholder-gray-500" 
+                      : "bg-slate-100 border border-slate-300 text-slate-800 placeholder-slate-400"
+                  }`}
+                />
+                <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 pointer-events-none" />
+              </form>
+
+              {/* Language toggle */}
+              <button
+                onClick={() => setLang(lang === "en" ? "np" : "en")}
+                className={`p-2 rounded-xl border transition-all ${
+                  isDarkMode 
+                    ? "bg-white/5 border-white/10 hover:bg-white/15 text-cyan-400" 
+                    : "bg-white border-slate-200 hover:bg-slate-100 text-slate-800"
+                }`}
+                title={lang === "en" ? "Switch to Nepali" : "English मा परिवर्तन गर्नुहोस्"}
+              >
+                <Globe className="h-4 w-4" />
+              </button>
+
+              {/* Theme switcher */}
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-xl border transition-all ${
+                  isDarkMode 
+                    ? "bg-white/5 border-white/10 hover:bg-white/15 text-yellow-400" 
+                    : "bg-white border-slate-200 hover:bg-slate-100 text-[#8b5cf6]"
+                }`}
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+
+              {/* Connect with Me Button & Dynamic Time */}
+              <div className="hidden md:flex flex-col items-center select-none">
+                <button
+                  onClick={() => handleNavScroll("contact-section")}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white shadow-lg shadow-cyan-500/10 active:scale-95 duration-150 cursor-pointer"
+                >
+                  <span data-en="Connect with Me" data-np="मसंग जोडिनुहोस्">
+                    {lang === "en" ? "Connect with Me" : "मसंग जोडिनुहोस्"}
+                  </span>
+                </button>
+
+                {/* VIBROYG Dynamic Nepal Date & Time below the connect button without any boxes */}
+                <div 
+                  className="vibroyg-text-gradient font-mono font-bold tracking-tight text-[11px] flex items-center gap-1.5 mt-2 justify-center whitespace-nowrap select-none"
+                >
+                  <span>{lang === "en" ? `${nepalTime.bsDateNum} ${nepalTime.bsMonthEn} ${nepalTime.bsYear}` : `${toNepaliDigits(nepalTime.bsDateNum)} ${nepalTime.bsMonthNp} ${toNepaliDigits(nepalTime.bsYear)}`}</span>
+                  <Clock className="h-3.5 w-3.5 inline-block shrink-0 stroke-[2.5]" style={{ stroke: 'url(#vibroyg-gradient)' }} />
+                  <span>{lang === "en" ? nepalTime.timeSemicolon : toNepaliDigits(nepalTime.timeSemicolon)}</span>
+                </div>
+              </div>
 
             {/* Mobile Menu Toggle */}
             <button
@@ -371,6 +384,8 @@ export default function App() {
 
           </div>
         </div>
+      </div>
+    </div>
 
         {/* Mobile Navigation Panel */}
         {mobileMenuOpen && (
@@ -381,7 +396,7 @@ export default function App() {
               {lang === "en" ? "Home" : "गृहपृष्ठ"}
             </button>
             <button onClick={() => handleNavScroll("social-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
-              {lang === "en" ? "Social Hub" : "सामाजिक केन्द्र"}
+              {lang === "en" ? "Social Media" : "सामाजिक मिडिया"}
             </button>
             <button onClick={() => handleNavScroll("initiatives-section")} className="text-left py-2 border-b border-white/5 hover:text-cyan-400 transition-colors">
               {lang === "en" ? "Initiatives" : "पहलहरू"}
@@ -656,26 +671,327 @@ export default function App() {
       </div>
 
       {/* ================= FOOTER ================= */}
-      <footer className={`py-12 border-t text-xs font-medium text-center relative z-10 transition-colors ${
+      <footer className={`py-16 border-t relative z-10 transition-colors ${
         isDarkMode 
-          ? "bg-black/45 border-white/5 text-gray-500" 
-          : "bg-slate-100 border-slate-200 text-slate-500"
+          ? "bg-black/60 border-white/5 text-gray-400" 
+          : "bg-slate-100 border-slate-200 text-slate-700"
       }`}>
-        <div className="max-w-7xl mx-auto px-4 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
-            <div className="space-y-1">
-              <p>&copy; 2026 Amit Joshi. All Rights Reserved. Designed & Architected with Custom Canvas Mesh.</p>
-              <p className="text-[10px] text-gray-600">Privacy Policy | Terms of Agreement | Kathmandu, Nepal</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-white/5">
+            {/* Column 1: Brand & Subtitle */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                {headerData.logoUrl && (
+                  <img src={headerData.logoUrl} alt="Logo" className="h-8 w-8 rounded-full object-cover border border-cyan-400" referrerPolicy="no-referrer" />
+                )}
+                <span className="text-base font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent font-sans">
+                  {lang === "en" ? headerData.brandTextEn : headerData.brandTextNp}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed font-sans" data-en="Engineering modern full-stack web architectures with precise localized experiences." data-np="सटीक स्थानीयकृत अनुभवहरूको साथ आधुनिक पूर्ण-स्ट्याक वेब आर्किटेक्चरहरू इन्जिनियरिङ गर्दै।">
+                {lang === "en" ? "Engineering modern full-stack web architectures with precise localized experiences." : "सटीक स्थानीयकृत अनुभवहरूको साथ आधुनिक पूर्ण-स्ट्याक वेब आर्किटेक्चरहरू इन्जिनियरिङ गर्दै।"}
+              </p>
             </div>
-            
 
+            {/* Column 2: Useful Links Tab */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400" data-en="Useful Links" data-np="उपयोगी लिङ्कहरू">
+                {lang === "en" ? "Useful Links" : "उपयोगी लिङ्कहरू"}
+              </h4>
+              <ul className="space-y-2 text-xs">
+                {(portfolioData.usefulLinks || []).length > 0 ? (
+                  (portfolioData.usefulLinks || []).map((link, idx) => (
+                    <li key={link.id || idx}>
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors flex items-center space-x-1.5">
+                        <ExternalLink className="h-3 w-3 text-cyan-400/70" />
+                        <span>{lang === "en" ? link.titleEn : link.titleNp}</span>
+                      </a>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-600 font-mono italic text-[11px]" data-en="No links staged" data-np="कुनै लिङ्क उपलब्ध छैन">
+                    {lang === "en" ? "No links staged" : "कुनै लिङ्क उपलब्ध छैन"}
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            {/* Column 3: Downloads Tab (PDF/JPG/PNG/GIF Supportable) */}
+            <div className="space-y-4">
+              <h4 
+                onClick={() => setIsDownloadsModalOpen(true)}
+                className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400 cursor-pointer hover:text-cyan-300 transition-colors flex items-center space-x-1.5"
+                data-en="Downloads Center" 
+                data-np="डाउनलोड केन्द्र"
+              >
+                <span>{lang === "en" ? "Downloads Center" : "डाउनलोड केन्द्र"}</span>
+                <span className="text-[10px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded-full font-sans lowercase">
+                  {(portfolioData.downloads || []).length}
+                </span>
+              </h4>
+              <p className="text-xs text-gray-500 leading-relaxed font-sans" data-en="Access official offline resources, documents, images, and files in a unified sandbox." data-np="एकीकृत स्यान्डबक्समा आधिकारिक स्रोतहरू, कागजातहरू, र छविहरू डाउनलोड गर्नुहोस्।">
+                {lang === "en" ? "Access official offline resources, documents, images, and files in a unified sandbox." : "एकीकृत स्यान्डबक्समा आधिकारिक स्रोतहरू, कागजातहरू, र छविहरू डाउनलोड गर्नुहोस्।"}
+              </p>
+              <button 
+                onClick={() => setIsDownloadsModalOpen(true)}
+                className="w-full inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-400/10 text-cyan-400 border border-cyan-400/30 hover:bg-cyan-400/25 active:scale-95 transition-all duration-200"
+              >
+                <Download className="h-3.5 w-3.5 animate-pulse" />
+                <span>{lang === "en" ? "Open Downloads Hub" : "डाउनलोड केन्द्र खोल्नुहोस्"}</span>
+              </button>
+            </div>
+
+            {/* Column 4: Legal Information */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400" data-en="Legal & Compliance" data-np="कानुनी र अनुपालन">
+                {lang === "en" ? "Legal & Compliance" : "कानुनी र अनुपालन"}
+              </h4>
+              <div className="flex flex-col space-y-2 text-xs">
+                <button 
+                  onClick={() => {
+                    setLegalModalContent({
+                      title: lang === "en" ? "Privacy Policy" : "गोपनीयता नीति",
+                      content: lang === "en" ? (portfolioData.privacyPolicyEn || "No privacy policy specified yet.") : (portfolioData.privacyPolicyNp || "गोपनीयता नीति अझै सम्म निर्दिष्ट गरिएको छैन।")
+                    });
+                    setIsLegalModalOpen(true);
+                  }}
+                  className="hover:text-cyan-400 transition-colors text-left flex items-center space-x-1.5"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 text-cyan-400/80" />
+                  <span data-en="Privacy Policy" data-np="गोपनीयता नीति">
+                    {lang === "en" ? "Privacy Policy" : "गोपनीयता नीति"}
+                  </span>
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setLegalModalContent({
+                      title: lang === "en" ? "Terms & Conditions" : "शर्त र नियमहरू",
+                      content: lang === "en" ? (portfolioData.termsConditionsEn || "No terms and conditions specified yet.") : (portfolioData.termsConditionsNp || "शर्त र नियमहरू अझै सम्म निर्दिष्ट गरिएको छैन।")
+                    });
+                    setIsLegalModalOpen(true);
+                  }}
+                  className="hover:text-cyan-400 transition-colors text-left flex items-center space-x-1.5"
+                >
+                  <FileSignature className="h-3.5 w-3.5 text-cyan-400/80" />
+                  <span data-en="Terms & Conditions" data-np="शर्त र नियमहरू">
+                    {lang === "en" ? "Terms & Conditions" : "शर्त र नियमहरू"}
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
+
+          <div className="pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium">
+            <p className="text-gray-500 text-center sm:text-left">
+              Wanna design Contact Me.....
+            </p>
+          </div>
+
         </div>
       </footer>
+
+      {/* Dynamic Legal terms and policies display Modal */}
+      <LegalModal 
+        isOpen={isLegalModalOpen} 
+        onClose={() => setIsLegalModalOpen(false)} 
+        title={legalModalContent.title} 
+        content={legalModalContent.content} 
+      />
+
+      {/* Dynamic Downloads list Modal */}
+      <DownloadsModal 
+        isOpen={isDownloadsModalOpen} 
+        onClose={() => setIsDownloadsModalOpen(false)} 
+        downloads={portfolioData.downloads || []} 
+        lang={lang}
+        isDarkMode={isDarkMode}
+      />
 
     </div>
   );
 }
+
+
+interface LegalModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  content: string;
+}
+
+const LegalModal: React.FC<LegalModalProps> = ({ isOpen, onClose, title, content }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-fade-in" onClick={onClose} />
+      <div className="bg-[#0b0f19] border border-white/10 rounded-2xl w-full max-w-2xl relative z-10 overflow-hidden shadow-2xl max-h-[85vh] flex flex-col">
+        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+          <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
+          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-white transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto text-sm text-gray-300 space-y-4 whitespace-pre-line font-sans leading-relaxed">
+          {content}
+        </div>
+        <div className="p-4 border-t border-white/5 bg-black/30 flex justify-end">
+          <button onClick={onClose} className="px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+interface DownloadsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  downloads: Array<{
+    id?: string;
+    titleEn: string;
+    titleNp: string;
+    fileUrl: string;
+    fileType?: string;
+  }>;
+  lang: "en" | "np";
+  isDarkMode: boolean;
+}
+
+const DownloadsModal: React.FC<DownloadsModalProps> = ({ isOpen, onClose, downloads, lang, isDarkMode }) => {
+  const [searchTerm, setSearchTerm] = React.useState("");
+  if (!isOpen) return null;
+
+  const filtered = downloads.filter(dl => {
+    const title = lang === "en" ? dl.titleEn : dl.titleNp;
+    return title.toLowerCase().includes(searchTerm.toLowerCase()) || (dl.fileType || "").toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-fade-in" onClick={onClose} />
+      
+      {/* Modal Container */}
+      <div className={`w-full max-w-2xl relative z-10 overflow-hidden shadow-2xl rounded-2xl max-h-[85vh] flex flex-col border ${
+        isDarkMode 
+          ? "bg-[#0b0f19] border-white/10" 
+          : "bg-white border-slate-200"
+      }`}>
+        {/* Header */}
+        <div className={`p-6 border-b flex justify-between items-center ${
+          isDarkMode ? "bg-black/20 border-white/5" : "bg-slate-50 border-slate-200"
+        }`}>
+          <div className="flex items-center space-x-2">
+            <Download className="h-5 w-5 text-cyan-400 animate-bounce" />
+            <h3 className={`text-lg font-bold tracking-tight ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+              {lang === "en" ? "Downloads Center" : "डाउनलोड केन्द्र"}
+            </h3>
+          </div>
+          <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${
+            isDarkMode ? "text-gray-400 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+          }`}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Search Bar inside Modal */}
+        <div className={`p-4 border-b ${isDarkMode ? "border-white/5" : "border-slate-100"}`}>
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={lang === "en" ? "Filter resources..." : "फाइलहरू खोज्नुहोस्..."}
+              className={`w-full rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 ${
+                isDarkMode 
+                  ? "bg-white/5 border border-white/10 text-white placeholder-gray-500" 
+                  : "bg-slate-100 border border-slate-300 text-slate-800 placeholder-slate-400"
+              }`}
+            />
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Items List */}
+        <div className="p-6 overflow-y-auto space-y-3 flex-1">
+          {filtered.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filtered.map((dl, idx) => {
+                const isImage = ["jpg", "png", "gif", "jpeg"].includes((dl.fileType || "").toLowerCase());
+                return (
+                  <div 
+                    key={dl.id || idx}
+                    className={`p-4 rounded-xl border flex flex-col justify-between hover:scale-[1.01] hover:border-cyan-400/50 transition-all duration-300 ${
+                      isDarkMode 
+                        ? "bg-white/5 border-white/5 hover:bg-white/10" 
+                        : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className={`p-2 rounded-lg ${isDarkMode ? "bg-black/35" : "bg-white border border-slate-200"}`}>
+                        {isImage ? (
+                          <ImageIcon className="h-5 w-5 text-purple-400" />
+                        ) : (
+                          <FileText className="h-5 w-5 text-cyan-400" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className={`text-xs font-semibold leading-snug line-clamp-2 ${isDarkMode ? "text-white" : "text-slate-800"}`}>
+                          {lang === "en" ? dl.titleEn : dl.titleNp}
+                        </p>
+                        <span className="text-[9px] font-mono uppercase bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full font-bold">
+                          {dl.fileType || "File"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-dashed border-white/5 flex justify-end">
+                      <a 
+                        href={dl.fileUrl} 
+                        download={lang === "en" ? dl.titleEn : dl.titleNp} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-colors"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>{lang === "en" ? "Download" : "डाउनलोड"}</span>
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-12 text-center space-y-2">
+              <div className="inline-flex p-3 rounded-full bg-cyan-500/5 text-cyan-400 mb-2">
+                <FileText className="h-6 w-6" />
+              </div>
+              <p className={`text-xs font-mono italic ${isDarkMode ? "text-gray-500" : "text-slate-400"}`}>
+                {lang === "en" ? "No assets found matching the filter" : "खोजिएको फाइल भेटिएन"}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className={`p-4 border-t flex justify-end ${
+          isDarkMode ? "bg-black/30 border-white/5" : "bg-slate-50 border-slate-200"
+        }`}>
+          <button 
+            onClick={onClose} 
+            className="px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-colors"
+          >
+            {lang === "en" ? "Close" : "बन्द गर्नुहोस्"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Full local Nepali digits translator
 function toNepaliDigits(num: number | string): string {

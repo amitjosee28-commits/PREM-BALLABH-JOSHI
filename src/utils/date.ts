@@ -165,6 +165,11 @@ export function getNepalBSAndGregorian() {
     gregStrNp,
     bsStrEn,
     bsStrNp,
-    timeOnly: `${strHours}:${strMinutes}:${strSeconds} ${ampm}`
+    timeOnly: `${strHours}:${strMinutes}:${strSeconds} ${ampm}`,
+    bsYear,
+    bsMonthEn: bsMonthsEn[bsMonthIndex],
+    bsMonthNp: bsMonthsNp[bsMonthIndex],
+    bsDateNum,
+    timeSemicolon: `${strHours};${strMinutes};${strSeconds}`
   };
 }

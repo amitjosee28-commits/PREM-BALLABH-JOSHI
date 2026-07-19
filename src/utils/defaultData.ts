@@ -101,6 +101,23 @@ export interface PortfolioData {
     permanentUrl: string;
     temporaryUrl: string;
   };
+  privacyPolicyEn?: string;
+  privacyPolicyNp?: string;
+  termsConditionsEn?: string;
+  termsConditionsNp?: string;
+  downloads?: Array<{
+    id: string;
+    titleEn: string;
+    titleNp: string;
+    fileUrl: string;
+    fileType: "pdf" | "jpg" | "png" | "gif";
+  }>;
+  usefulLinks?: Array<{
+    id: string;
+    titleEn: string;
+    titleNp: string;
+    url: string;
+  }>;
 }
 
 export const defaultPortfolioData: PortfolioData = {
@@ -502,5 +519,39 @@ export const defaultPortfolioData: PortfolioData = {
   maps: {
     permanentUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m4!2s0x39eb198a307baabf%3A0xb5137c15185d2612!2sKathmandu!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp",
     temporaryUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m4!2s0x39eb1923bf62758f%3A0xb7e5ff8676bf9579!2sLalitpur!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp"
-  }
+  },
+  privacyPolicyEn: "This Privacy Policy describes how we collect, use, and handle your information. Your trust is important to us, and we are committed to protecting your personal data.",
+  privacyPolicyNp: "यो गोपनीयता नीतिले हामी कसरी तपाईंको जानकारी सङ्कलन, प्रयोग र व्यवस्थापन गर्छौं भन्ने कुरा वर्णन गर्दछ। तपाईंको विश्वास हाम्रो लागि महत्त्वपूर्ण छ, र हामी तपाईंको व्यक्तिगत डेटा सुरक्षित गर्न प्रतिबद्ध छौं।",
+  termsConditionsEn: "By accessing this website, you agree to be bound by these Terms and Conditions of Use, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws.",
+  termsConditionsNp: "यस वेबसाइटमा पहुँच गरेर, तपाईं यी नियम र सर्तहरू, सबै लागू हुने कानून र नियमहरूद्वारा बाँधिन सहमत हुनुहुन्छ, र स्थानीय कानूनहरूको पालनाको लागि तपाईं जिम्मेवार हुनुहुन्छ भनी सहमत हुनुहुन्छ।",
+  downloads: [
+    {
+      id: "dl-1",
+      titleEn: "Official Professional CV (PDF)",
+      titleNp: "आधिकारिक व्यावसायिक सीभी (PDF)",
+      fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      fileType: "pdf"
+    },
+    {
+      id: "dl-2",
+      titleEn: "Service Brochure (JPG)",
+      titleNp: "सेवा ब्रोसर (JPG)",
+      fileUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=1200&auto=format&fit=crop&q=80",
+      fileType: "jpg"
+    }
+  ],
+  usefulLinks: [
+    {
+      id: "ul-1",
+      titleEn: "Government of Nepal Official Portal",
+      titleNp: "नेपाल सरकारको आधिकारिक पोर्टल",
+      url: "https://nepal.gov.np"
+    },
+    {
+      id: "ul-2",
+      titleEn: "Tribhuvan University IOE",
+      titleNp: "त्रिभुवन विश्वविद्यालय आईओई",
+      url: "https://ioe.edu.np"
+    }
+  ]
 };

@@ -51,7 +51,7 @@ export default function Dashboard() {
   const [activeLangTab, setActiveLangTab] = useState<"en" | "np">("en");
   
   // Section Navigation inside CMS
-  const [activeCmsSection, setActiveCmsSection] = useState<"header" | "biography" | "socials" | "initiatives" | "tools" | "education" | "services" | "interests" | "popup" | "maps">("header");
+  const [activeCmsSection, setActiveCmsSection] = useState<"header" | "biography" | "slides" | "socials" | "initiatives" | "tools" | "education" | "services" | "interests" | "popup" | "maps" | "footer">("header");
 
   // Rich Text Custom Style Generator state
   const [richTextConfig, setRichTextConfig] = useState({
@@ -136,6 +136,30 @@ export default function Dashboard() {
     descriptionEn: "",
     descriptionNp: "",
     icon: "Heart"
+  });
+
+  // Form Inputs for Slides
+  const [slideForm, setSlideForm] = useState({
+    imageUrl: "",
+    titleEn: "",
+    titleNp: "",
+    subtitleEn: "",
+    subtitleNp: ""
+  });
+
+  // Form Inputs for Downloads
+  const [downloadForm, setDownloadForm] = useState({
+    titleEn: "",
+    titleNp: "",
+    fileUrl: "",
+    fileType: "pdf" as "pdf" | "jpg" | "png" | "gif"
+  });
+
+  // Form Inputs for Useful Links
+  const [usefulLinkForm, setUsefulLinkForm] = useState({
+    titleEn: "",
+    titleNp: "",
+    url: ""
   });
 
   // VIBGYOR Preset list for rich text mixer
@@ -515,6 +539,96 @@ export default function Dashboard() {
     showToast("success", "Interest deleted.");
   };
 
+  const handleSaveSlide = () => {
+    if (!slideForm.imageUrl || !slideForm.titleEn) {
+      showToast("error", "Image URL and Title are required.");
+      return;
+    }
+    const slides = [...(stagingData.homepage?.slides || [])];
+    if (editingItemId) {
+      const idx = slides.findIndex(s => s.id === editingItemId);
+      if (idx !== -1) {
+        slides[idx] = { ...slideForm, id: editingItemId };
+      }
+    } else {
+      slides.push({ ...slideForm, id: "slide-" + Date.now() });
+    }
+    setStagingData(prev => ({
+      ...prev,
+      homepage: {
+        ...(prev.homepage || {}),
+        slides
+      }
+    }));
+    setSlideForm({ imageUrl: "", titleEn: "", titleNp: "", subtitleEn: "", subtitleNp: "" });
+    setEditingItemId(null);
+    showToast("success", "Cinematic Home Slide saved.");
+  };
+
+  const handleDeleteSlide = (id: string) => {
+    const slides = (stagingData.homepage?.slides || []).filter(s => s.id !== id);
+    setStagingData(prev => ({
+      ...prev,
+      homepage: {
+        ...(prev.homepage || {}),
+        slides
+      }
+    }));
+    showToast("success", "Cinematic Home Slide deleted.");
+  };
+
+  const handleSaveDownload = () => {
+    if (!downloadForm.titleEn || !downloadForm.fileUrl) {
+      showToast("error", "Title and File URL are required.");
+      return;
+    }
+    const downloads = [...(stagingData.downloads || [])];
+    if (editingItemId) {
+      const idx = downloads.findIndex(d => d.id === editingItemId);
+      if (idx !== -1) {
+        downloads[idx] = { ...downloadForm, id: editingItemId };
+      }
+    } else {
+      downloads.push({ ...downloadForm, id: "dl-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, downloads }));
+    setDownloadForm({ titleEn: "", titleNp: "", fileUrl: "", fileType: "pdf" });
+    setEditingItemId(null);
+    showToast("success", "Downloadable Asset saved.");
+  };
+
+  const handleDeleteDownload = (id: string) => {
+    const downloads = (stagingData.downloads || []).filter(d => d.id !== id);
+    setStagingData(prev => ({ ...prev, downloads }));
+    showToast("success", "Downloadable Asset deleted.");
+  };
+
+  const handleSaveUsefulLink = () => {
+    if (!usefulLinkForm.titleEn || !usefulLinkForm.url) {
+      showToast("error", "Title and Destination URL are required.");
+      return;
+    }
+    const usefulLinks = [...(stagingData.usefulLinks || [])];
+    if (editingItemId) {
+      const idx = usefulLinks.findIndex(l => l.id === editingItemId);
+      if (idx !== -1) {
+        usefulLinks[idx] = { ...usefulLinkForm, id: editingItemId };
+      }
+    } else {
+      usefulLinks.push({ ...usefulLinkForm, id: "ul-" + Date.now() });
+    }
+    setStagingData(prev => ({ ...prev, usefulLinks }));
+    setUsefulLinkForm({ titleEn: "", titleNp: "", url: "" });
+    setEditingItemId(null);
+    showToast("success", "Useful Link saved.");
+  };
+
+  const handleDeleteUsefulLink = (id: string) => {
+    const usefulLinks = (stagingData.usefulLinks || []).filter(l => l.id !== id);
+    setStagingData(prev => ({ ...prev, usefulLinks }));
+    showToast("success", "Useful Link deleted.");
+  };
+
   // Helper formatting for dynamic preview window checks
   const getAnnouncementLineBreaksCount = () => {
     const activeText = activeLangTab === "en" ? stagingData.popup?.textEn : stagingData.popup?.textNp;
@@ -734,14 +848,16 @@ export default function Dashboard() {
           {[
             { id: "header", label: "Favicons & Branding", icon: Layout },
             { id: "biography", label: "Biographies", icon: Users },
-            { id: "socials", label: "Social Hub cards", icon: Landmark },
+            { id: "slides", label: "Cinematic Home Slides", icon: Sliders },
+            { id: "socials", label: "Social Media Hub", icon: Landmark },
             { id: "initiatives", label: "Strategic Initiatives", icon: BookOpen },
             { id: "tools", label: "Utility Tool Deck", icon: Sliders },
             { id: "education", label: "Academic Milestones", icon: GraduationCap },
             { id: "services", label: "Premium Services", icon: Landmark },
             { id: "interests", label: "Personal Passions", icon: Heart },
             { id: "popup", label: "Announcement Popup", icon: Settings },
-            { id: "maps", label: "Google Maps Embeds", icon: MapPin }
+            { id: "maps", label: "Google Maps Embeds", icon: MapPin },
+            { id: "footer", label: "Footer, Privacy & Links", icon: Layout }
           ].map((sec) => {
             const Icon = sec.icon;
             const isActive = activeCmsSection === sec.id;
@@ -1571,6 +1687,300 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ---------------- SECTION: CINEMATIC HOME SLIDES ---------------- */}
+            {activeCmsSection === "slides" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Cinematic Home Slider Setup</h3>
+                  <p className="text-gray-500 mt-1">Manage background slides, imagery, and overlay text sliding in the homepage.</p>
+                </div>
+
+                {/* Slide Builder Form */}
+                <div className="p-4 bg-white/[0.01] border border-white/10 rounded-2xl grid grid-cols-1 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Slide Background Image (URL/Base64) *</label>
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="text" 
+                        value={slideForm.imageUrl}
+                        onChange={(e) => setSlideForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                        placeholder="Direct image URL or upload file"
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50"
+                      />
+                      <label className="cursor-pointer px-4 py-2 bg-white/5 border border-white/10 rounded-xl font-bold uppercase tracking-wide hover:bg-white/10 text-cyan-400 text-center">
+                        Upload Image
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => convertToBase64(e, (b) => setSlideForm(prev => ({ ...prev, imageUrl: b })))}
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {activeLangTab === "en" ? (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Slide Main Title (En) *</label>
+                        <input 
+                          type="text" 
+                          value={slideForm.titleEn}
+                          onChange={(e) => setSlideForm(prev => ({ ...prev, titleEn: e.target.value }))}
+                          placeholder="e.g., Architect of Modern Web Experiences"
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Slide Subtitle (En)</label>
+                        <textarea 
+                          rows={2}
+                          value={slideForm.subtitleEn}
+                          onChange={(e) => setSlideForm(prev => ({ ...prev, subtitleEn: e.target.value }))}
+                          placeholder="e.g., Engineering robust, scalable applications with clean, interactive designs."
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Slide Main Title (Np)</label>
+                        <input 
+                          type="text" 
+                          value={slideForm.titleNp}
+                          onChange={(e) => setSlideForm(prev => ({ ...prev, titleNp: e.target.value }))}
+                          placeholder="e.g., आधुनिक वेब अनुभवका निर्माता"
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Slide Subtitle (Np)</label>
+                        <textarea 
+                          rows={2}
+                          value={slideForm.subtitleNp}
+                          onChange={(e) => setSlideForm(prev => ({ ...prev, subtitleNp: e.target.value }))}
+                          placeholder="e.g., स्वच्छ, अन्तरक्रियात्मक डिजाइनहरूको साथ बलियो, मापनयोग्य अनुप्रयोगहरू निर्माण गर्दै।"
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button type="button" onClick={handleSaveSlide} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                      <Plus className="h-4 w-4" />
+                      <span>{editingItemId ? "Update Slide" : "Add Slide"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Slides list */}
+                <div className="space-y-3">
+                  <h4 className="font-mono font-bold text-gray-500 uppercase text-[10px]">Staged Home Slides</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(stagingData.homepage?.slides || []).map((slide, idx) => (
+                      <div key={slide.id || idx} className="p-3 bg-black/40 border border-white/10 rounded-xl flex flex-col justify-between space-y-3">
+                        <div className="flex items-center space-x-3">
+                          {slide.imageUrl && (
+                            <img src={slide.imageUrl} alt="thumbnail" className="h-12 w-20 object-cover rounded border border-white/10" referrerPolicy="no-referrer" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-bold text-white truncate">{activeLangTab === "en" ? slide.titleEn : slide.titleNp}</h5>
+                            <p className="text-gray-400 text-[10px] truncate">{activeLangTab === "en" ? slide.subtitleEn : slide.subtitleNp}</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end space-x-2 border-t border-white/5 pt-2">
+                          <button onClick={() => { setEditingItemId(slide.id); setSlideForm({ ...slide }); }} className="p-1.5 text-gray-400 hover:text-cyan-400 inline-flex items-center space-x-1"><Edit3 className="h-3.5 w-3.5" /><span className="text-[10px] uppercase font-mono">Edit</span></button>
+                          <button onClick={() => handleDeleteSlide(slide.id)} className="p-1.5 text-gray-400 hover:text-red-400 inline-flex items-center space-x-1"><Trash2 className="h-3.5 w-3.5" /><span className="text-[10px] uppercase font-mono">Delete</span></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------- SECTION: FOOTER, PRIVACY & LINKS ---------------- */}
+            {activeCmsSection === "footer" && (
+              <div className="space-y-8">
+                <div className="border-b border-white/5 pb-2">
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Footer, Legal Privacy Policy & Resource Downloads</h3>
+                  <p className="text-gray-500 mt-1">Manage footer layout options, legal clauses (Privacy Policy, Terms), downloadable PDF/image sheets, and customizable link tabs.</p>
+                </div>
+
+                {/* 1. Privacy Policy & Terms of Agreement text fields */}
+                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-4">
+                  <h4 className="font-mono font-bold text-cyan-400 uppercase text-[10px] tracking-widest">1. Legal Content Clauses (Privacy & Terms)</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeLangTab === "en" ? (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-400 uppercase">Privacy Policy (English)</label>
+                          <textarea 
+                            rows={4}
+                            value={stagingData.privacyPolicyEn || ""}
+                            onChange={(e) => setStagingData(prev => ({ ...prev, privacyPolicyEn: e.target.value }))}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-400 uppercase">Terms & Conditions (English)</label>
+                          <textarea 
+                            rows={4}
+                            value={stagingData.termsConditionsEn || ""}
+                            onChange={(e) => setStagingData(prev => ({ ...prev, termsConditionsEn: e.target.value }))}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-purple-400 uppercase">Privacy Policy (Nepali)</label>
+                          <textarea 
+                            rows={4}
+                            value={stagingData.privacyPolicyNp || ""}
+                            onChange={(e) => setStagingData(prev => ({ ...prev, privacyPolicyNp: e.target.value }))}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-sans"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-purple-400 uppercase">Terms & Conditions (Nepali)</label>
+                          <textarea 
+                            rows={4}
+                            value={stagingData.termsConditionsNp || ""}
+                            onChange={(e) => setStagingData(prev => ({ ...prev, termsConditionsNp: e.target.value }))}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-sans"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Downloadable Resources Setup */}
+                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-4">
+                  <h4 className="font-mono font-bold text-cyan-400 uppercase text-[10px] tracking-widest">2. Resource Downloads Hub (PDF/JPG/PNG/GIF Supportable)</h4>
+                  
+                  {/* Download Form */}
+                  <div className="p-4 bg-black/40 border border-white/10 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeLangTab === "en" ? (
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Asset Title (En) *</label>
+                        <input type="text" value={downloadForm.titleEn} onChange={(e) => setDownloadForm(prev => ({ ...prev, titleEn: e.target.value }))} placeholder="e.g., Official Professional CV" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Asset Title (Np)</label>
+                        <input type="text" value={downloadForm.titleNp} onChange={(e) => setDownloadForm(prev => ({ ...prev, titleNp: e.target.value }))} placeholder="e.g., आधिकारिक व्यावसायिक सीभी" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase">File/Asset Type</label>
+                      <select value={downloadForm.fileType} onChange={(e) => setDownloadForm(prev => ({ ...prev, fileType: e.target.value as any }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white">
+                        <option value="pdf">PDF Document (*.pdf)</option>
+                        <option value="jpg">JPG Image (*.jpg)</option>
+                        <option value="png">PNG Image (*.png)</option>
+                        <option value="gif">GIF Animation (*.gif)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase">File URL or Upload asset *</label>
+                      <div className="flex space-x-2">
+                        <input type="text" value={downloadForm.fileUrl} onChange={(e) => setDownloadForm(prev => ({ ...prev, fileUrl: e.target.value }))} placeholder="Direct file URL path" className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono" />
+                        <label className="cursor-pointer px-3 py-2 bg-white/5 border border-white/10 rounded-xl font-bold uppercase text-cyan-400 text-center flex items-center">
+                          Upload
+                          <input type="file" accept=".pdf,image/*" onChange={(e) => convertToBase64(e, (b) => setDownloadForm(prev => ({ ...prev, fileUrl: b })))} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2 flex justify-end">
+                      <button type="button" onClick={handleSaveDownload} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                        <Plus className="h-4 w-4" />
+                        <span>Save Download Item</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Downloads list */}
+                  <div className="space-y-2">
+                    <h5 className="font-mono text-gray-500 uppercase text-[9px]">Staged Download Assets</h5>
+                    <div className="space-y-2">
+                      {(stagingData.downloads || []).map((d) => (
+                        <div key={d.id} className="p-3 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                          <div className="flex items-center space-x-2.5">
+                            <span className="px-2 py-0.5 rounded text-[8px] bg-cyan-500/15 text-cyan-400 font-mono font-bold uppercase">{d.fileType}</span>
+                            <span className="font-bold text-white">{activeLangTab === "en" ? d.titleEn : d.titleNp}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button onClick={() => { setEditingItemId(d.id); setDownloadForm({ ...d }); }} className="p-1.5 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                            <button onClick={() => handleDeleteDownload(d.id)} className="p-1.5 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Useful Links Setup */}
+                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-4">
+                  <h4 className="font-mono font-bold text-cyan-400 uppercase text-[10px] tracking-widest">3. Useful Links Tab (CMS customizable)</h4>
+
+                  {/* Useful Links Form */}
+                  <div className="p-4 bg-black/40 border border-white/10 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeLangTab === "en" ? (
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase">Link Title (En) *</label>
+                        <input type="text" value={usefulLinkForm.titleEn} onChange={(e) => setUsefulLinkForm(prev => ({ ...prev, titleEn: e.target.value }))} placeholder="e.g., Government of Nepal Official Portal" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase">Link Title (Np)</label>
+                        <input type="text" value={usefulLinkForm.titleNp} onChange={(e) => setUsefulLinkForm(prev => ({ ...prev, titleNp: e.target.value }))} placeholder="e.g., नेपाल सरकारको आधिकारिक पोर्टल" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="font-mono font-bold text-gray-400 uppercase">Destination Redirect URL *</label>
+                      <input type="text" value={usefulLinkForm.url} onChange={(e) => setUsefulLinkForm(prev => ({ ...prev, url: e.target.value }))} placeholder="e.g., https://nepal.gov.np" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono" />
+                    </div>
+
+                    <div className="md:col-span-2 flex justify-end">
+                      <button type="button" onClick={handleSaveUsefulLink} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
+                        <Plus className="h-4 w-4" />
+                        <span>Save Link</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Links list */}
+                  <div className="space-y-2">
+                    <h5 className="font-mono text-gray-500 uppercase text-[9px]">Staged Useful Links</h5>
+                    <div className="space-y-2">
+                      {(stagingData.usefulLinks || []).map((l) => (
+                        <div key={l.id} className="p-3 bg-black/40 border border-white/10 rounded-xl flex justify-between items-center">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-white">{activeLangTab === "en" ? l.titleEn : l.titleNp}</span>
+                            <span className="text-[10px] text-gray-500 font-mono truncate max-w-md">{l.url}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button onClick={() => { setEditingItemId(l.id); setUsefulLinkForm({ ...l }); }} className="p-1.5 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                            <button onClick={() => handleDeleteUsefulLink(l.id)} className="p-1.5 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
             {/* ---------------- 9. SECTION: MAPS EMBEDS ---------------- */}
             {activeCmsSection === "maps" && (
               <div className="space-y-6">
@@ -1680,7 +2090,7 @@ export default function Dashboard() {
 
 // Render root element
 const container = document.getElementById("root");
-if (container && window.location.pathname.includes("dashboard.html")) {
+if (container) {
   const root = createRoot(container);
   root.render(<Dashboard />);
 }
