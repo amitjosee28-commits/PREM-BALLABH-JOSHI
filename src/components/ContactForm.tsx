@@ -180,6 +180,35 @@ export default function ContactForm({ lang, permanentMapUrl, temporaryMapUrl }: 
           {/* RIGHT COLUMN: Responsive Location Map Viewers (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
             
+            {/* Current address map (Temporary / Work) */}
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-5 backdrop-blur-md shadow-lg space-y-3">
+              <div className="flex items-center space-x-2 border-b border-white/5 pb-2 text-white">
+                <MapPin className="h-4 w-4 text-purple-400" />
+                <h4 className="text-sm font-bold font-sans">
+                  {lang === "en" ? "Current Address: Lalitpur, Nepal" : "हालको ठेगाना: ललितपुर, नेपाल"}
+                </h4>
+              </div>
+              <div className="h-[210px] w-full rounded-xl border border-white/5 overflow-hidden shadow-inner relative bg-black/40">
+                {temporaryMapUrl ? (
+                  <iframe
+                    src={temporaryMapUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen={true}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    title="Current Address Map"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-xs font-mono text-gray-500">
+                    Map Not Available
+                  </div>
+                )}
+                <div className="absolute inset-0 pointer-events-none rounded-xl border border-white/10" />
+              </div>
+            </div>
+
             {/* Permanent address map */}
             <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-5 backdrop-blur-md shadow-lg space-y-3">
               <div className="flex items-center space-x-2 border-b border-white/5 pb-2 text-white">
@@ -199,35 +228,6 @@ export default function ContactForm({ lang, permanentMapUrl, temporaryMapUrl }: 
                     loading="lazy"
                     referrerPolicy="no-referrer"
                     title="Permanent Address Map"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-xs font-mono text-gray-500">
-                    Map Not Available
-                  </div>
-                )}
-                <div className="absolute inset-0 pointer-events-none rounded-xl border border-white/10" />
-              </div>
-            </div>
-
-            {/* Temporary address map */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-5 backdrop-blur-md shadow-lg space-y-3">
-              <div className="flex items-center space-x-2 border-b border-white/5 pb-2 text-white">
-                <MapPin className="h-4 w-4 text-purple-400" />
-                <h4 className="text-sm font-bold font-sans">
-                  {lang === "en" ? "Temporary / Work Location: Lalitpur, Nepal" : "अस्थायी / कार्य स्थान: ललितपुर, नेपाल"}
-                </h4>
-              </div>
-              <div className="h-[210px] w-full rounded-xl border border-white/5 overflow-hidden shadow-inner relative bg-black/40">
-                {temporaryMapUrl ? (
-                  <iframe
-                    src={temporaryMapUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen={true}
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    title="Temporary Address Map"
                   />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-xs font-mono text-gray-500">

@@ -847,7 +847,7 @@ export default function Dashboard() {
           </h3>
           {[
             { id: "header", label: "Favicons & Branding", icon: Layout },
-            { id: "biography", label: "Biographies", icon: Users },
+            { id: "biography", label: "Homepage & Biographies", icon: Users },
             { id: "slides", label: "Cinematic Home Slides", icon: Sliders },
             { id: "socials", label: "Social Media Hub", icon: Landmark },
             { id: "initiatives", label: "Strategic Initiatives", icon: BookOpen },
@@ -1006,8 +1006,8 @@ export default function Dashboard() {
             {activeCmsSection === "biography" && (
               <div className="space-y-6">
                 <div className="border-b border-white/5 pb-2">
-                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Portraits & Biographies</h3>
-                  <p className="text-gray-500 mt-1">Staging biography summary records and full expandables.</p>
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Homepage Texts, Headings & Biographies</h3>
+                  <p className="text-gray-500 mt-1">Staging biography summary records, full expandables, main heading banners, and action buttons.</p>
                 </div>
 
                 {/* ADVANCED RICH-TEXT COMPONENT GENERATOR (VIBGYOR Custom Colors) */}
@@ -1128,6 +1128,140 @@ export default function Dashboard() {
                       />
                     </div>
                   )}
+
+                  {/* Homepage Headings & Action Buttons Customizable Sub-section */}
+                  <div className="border-t border-white/5 pt-4 mt-4">
+                    <h4 className="text-xs font-bold font-mono text-purple-400 uppercase tracking-wider mb-3">Homepage Personalization & Call-to-Actions</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {activeLangTab === "en" ? (
+                        <>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Portal Pill Badge (En)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.portalPillEn || ""}
+                              onChange={(e) => updateStagingField("homepage", "portalPillEn", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="Amit Joshi Official Portal"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Executive Summary Header (En)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.executiveSummaryTitleEn || ""}
+                              onChange={(e) => updateStagingField("homepage", "executiveSummaryTitleEn", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="Core Executive Summary"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Biography Button Text (En)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.bioBtnEn || ""}
+                              onChange={(e) => updateStagingField("homepage", "bioBtnEn", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="Read Full Biography"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Connect Button Text (En)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.connectBtnEn || ""}
+                              onChange={(e) => updateStagingField("homepage", "connectBtnEn", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="Connect to Me Portal"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Biography Modal Header (En)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.biographyTitleEn || ""}
+                              onChange={(e) => updateStagingField("homepage", "biographyTitleEn", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="Biography of Amit Joshi"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Biography Modal Tagline (En)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.biographyTaglineEn || ""}
+                              onChange={(e) => updateStagingField("homepage", "biographyTaglineEn", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="Senior Full-Stack Architect & Digital Localizer"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Portal Pill Badge (Np)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.portalPillNp || ""}
+                              onChange={(e) => updateStagingField("homepage", "portalPillNp", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="अमित जोशीको आधिकारिक पोर्टल"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Executive Summary Header (Np)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.executiveSummaryTitleNp || ""}
+                              onChange={(e) => updateStagingField("homepage", "executiveSummaryTitleNp", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="मुख्य कार्यकारी संक्षेप"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Biography Button Text (Np)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.bioBtnNp || ""}
+                              onChange={(e) => updateStagingField("homepage", "bioBtnNp", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="पूर्ण जीवनी पढ्नुहोस्"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Connect Button Text (Np)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.connectBtnNp || ""}
+                              onChange={(e) => updateStagingField("homepage", "connectBtnNp", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="मेरो पोर्टलमा जोडिनुहोस्"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Biography Modal Header (Np)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.biographyTitleNp || ""}
+                              onChange={(e) => updateStagingField("homepage", "biographyTitleNp", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="अमित जोशीको जीवनी"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Biography Modal Tagline (Np)</label>
+                            <input
+                              type="text"
+                              value={stagingData.homepage?.biographyTaglineNp || ""}
+                              onChange={(e) => updateStagingField("homepage", "biographyTaglineNp", e.target.value)}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                              placeholder="वरिष्ठ फुल-स्ट्याक आर्किटेक्ट र डिजिटल लोकलाइजर"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

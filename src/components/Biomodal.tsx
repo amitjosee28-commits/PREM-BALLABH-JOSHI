@@ -4,9 +4,23 @@ interface BioModalProps {
   lang: "en" | "np";
   biographyFullEn: string;
   biographyFullNp: string;
+  biographyTitleEn?: string;
+  biographyTitleNp?: string;
+  biographyTaglineEn?: string;
+  biographyTaglineNp?: string;
 }
 
-export default function BioModal({ isOpen, onClose, lang, biographyFullEn, biographyFullNp }: BioModalProps) {
+export default function BioModal({ 
+  isOpen, 
+  onClose, 
+  lang, 
+  biographyFullEn, 
+  biographyFullNp,
+  biographyTitleEn,
+  biographyTitleNp,
+  biographyTaglineEn,
+  biographyTaglineNp
+}: BioModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -35,12 +49,16 @@ export default function BioModal({ isOpen, onClose, lang, biographyFullEn, biogr
         <div className="mb-4">
           <h3 
             className="text-2xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent font-sans"
-            data-en="Biography of Amit Joshi" 
-            data-np="अमित जोशीको जीवनी"
           >
-            {lang === "en" ? "Biography of Amit Joshi" : "अमित जोशीको जीवनी"}
+            {lang === "en" 
+              ? (biographyTitleEn || "Biography of Amit Joshi") 
+              : (biographyTitleNp || "अमित जोशीको जीवनी")}
           </h3>
-          <p className="text-xs font-mono text-cyan-400/80 mt-1">Senior Full-Stack Architect & Digital Localizer</p>
+          <p className="text-xs font-mono text-cyan-400/80 mt-1">
+            {lang === "en" 
+              ? (biographyTaglineEn || "Senior Full-Stack Architect & Digital Localizer") 
+              : (biographyTaglineNp || "वरिष्ठ फुल-स्ट्याक आर्किटेक्ट र डिजिटल लोकलाइजर")}
+          </p>
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-4 text-gray-300 text-sm leading-relaxed scrollbar-thin scrollbar-thumb-white/10">

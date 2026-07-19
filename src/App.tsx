@@ -457,8 +457,10 @@ export default function App() {
           <div className="space-y-4">
             <span className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 font-mono text-xs uppercase tracking-widest animate-pulse">
               <Sparkles className="h-4 w-4" />
-              <span data-en="Amit Joshi Official Portal" data-np="अमित जोशीको आधिकारिक पोर्टल">
-                {lang === "en" ? "Amit Joshi Official Portal" : "अमित जोशीको आधिकारिक पोर्टल"}
+              <span>
+                {lang === "en" 
+                  ? (homepageData.portalPillEn || "Amit Joshi Official Portal") 
+                  : (homepageData.portalPillNp || "अमित जोशीको आधिकारिक पोर्टल")}
               </span>
             </span>
 
@@ -474,7 +476,9 @@ export default function App() {
           {/* 4-line summary block */}
           <div className="bg-white/[0.03] border border-white/8 backdrop-blur-xl rounded-2xl p-6 shadow-2xl max-w-3xl mx-auto text-left space-y-4">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400 border-b border-white/5 pb-2">
-              {lang === "en" ? "Core Executive Summary" : "मुख्य कार्यकारी संक्षेप"}
+              {lang === "en" 
+                ? (homepageData.executiveSummaryTitleEn || "Core Executive Summary") 
+                : (homepageData.executiveSummaryTitleNp || "मुख्य कार्यकारी संक्षेप")}
             </h3>
             <p className="text-sm text-gray-300 leading-relaxed font-sans">
               {lang === "en" ? homepageData.biographySummaryEn : homepageData.biographySummaryNp}
@@ -487,8 +491,10 @@ export default function App() {
               onClick={() => setIsBioOpen(true)}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-cyan-500 text-black hover:bg-cyan-400 transition-all shadow-xl shadow-cyan-500/15 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
             >
-              <span data-en="Read Full Biography" data-np="पूर्ण जीवनी पढ्नुहोस्">
-                {lang === "en" ? "Read Full Biography" : "पूर्ण जीवनी पढ्नुहोस्"}
+              <span>
+                {lang === "en" 
+                  ? (homepageData.bioBtnEn || "Read Full Biography") 
+                  : (homepageData.bioBtnNp || "पूर्ण जीवनी पढ्नुहोस्")}
               </span>
             </button>
 
@@ -496,8 +502,10 @@ export default function App() {
               onClick={() => handleNavScroll("contact-section")}
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/5 hover:bg-cyan-500/10 text-cyan-400 border border-white/10 hover:border-cyan-500/25 transition-all shadow-md transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
             >
-              <span data-en="Connect to Me Portal" data-np="मेरो पोर्टलमा जोडिनुहोस्">
-                {lang === "en" ? "Connect to Me Portal" : "मेरो पोर्टलमा जोडिनुहोस्"}
+              <span>
+                {lang === "en" 
+                  ? (homepageData.connectBtnEn || "Connect to Me Portal") 
+                  : (homepageData.connectBtnNp || "मेरो पोर्टलमा जोडिनुहोस्")}
               </span>
             </button>
           </div>
@@ -511,6 +519,10 @@ export default function App() {
           lang={lang} 
           biographyFullEn={homepageData.biographyFullEn || defaultPortfolioData.homepage.biographyFullEn}
           biographyFullNp={homepageData.biographyFullNp || defaultPortfolioData.homepage.biographyFullNp}
+          biographyTitleEn={homepageData.biographyTitleEn}
+          biographyTitleNp={homepageData.biographyTitleNp}
+          biographyTaglineEn={homepageData.biographyTaglineEn}
+          biographyTaglineNp={homepageData.biographyTaglineNp}
         />
       </section>
 

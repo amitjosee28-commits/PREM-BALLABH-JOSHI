@@ -18,6 +18,18 @@ export interface PortfolioData {
     biographySummaryNp: string;
     biographyFullEn: string;
     biographyFullNp: string;
+    portalPillEn?: string;
+    portalPillNp?: string;
+    executiveSummaryTitleEn?: string;
+    executiveSummaryTitleNp?: string;
+    bioBtnEn?: string;
+    bioBtnNp?: string;
+    connectBtnEn?: string;
+    connectBtnNp?: string;
+    biographyTitleEn?: string;
+    biographyTitleNp?: string;
+    biographyTaglineEn?: string;
+    biographyTaglineNp?: string;
   };
   socials: Array<{
     id: string;
@@ -157,7 +169,19 @@ export const defaultPortfolioData: PortfolioData = {
     biographySummaryEn: "Amit Joshi is a senior full-stack developer, software trainer, and visual craft specialist based in Kathmandu, Nepal. Operating at the intersections of high-performance backend pipelines and elegant, responsive frontends, Amit provides advanced custom CMS setups and community-focused digital toolkit initiatives.",
     biographySummaryNp: "अमित जोशी काठमाडौं, नेपालमा आधारित एक वरिष्ठ फुल-स्ट्याक डेभलपर, सफ्टवेयर प्रशिक्षक, र भिजुअल क्राफ्ट विशेषज्ञ हुनुहुन्छ। उच्च-प्रदर्शन ब्याकइन्ड पाइपलाइनहरू र सुरुचिपूर्ण, उत्तरदायी फ्रन्टइन्डहरूको संगममा काम गर्दै, अमितले उन्नत अनुकूलन CMS सेटअपहरू र समुदाय-केन्द्रित डिजिटल टुलकिट पहलहरू प्रदान गर्नुहुन्छ।",
     biographyFullEn: "With over 8 years of professional software engineering experience, Amit Joshi specializes in architectural design for enterprise portals, reactive web components, and real-time synchronization ecosystems. After graduating in Computer Engineering, Amit dedicated his efforts towards building utility tools that solve everyday digital workflow challenges for people in Nepal, while simultaneously scaling custom applications for international brands. His philosophy centers around lightweight code execution, modern responsive styles with custom neon glows, and localized dual-lingual translations.",
-    biographyFullNp: "८ वर्षभन्दा बढी व्यावसायिक सफ्टवेयर इञ्जिनियरिङ अनुभवका साथ, अमित जोशी इन्टरप्राइज पोर्टलहरू, रिएक्टिभ वेब कम्पोनेन्टहरू, र रियल-टाइम सिङ्क्रोनाइजेसन इकोसिस्टमहरूको वास्तुकला डिजाइनमा विशेषज्ञ हुनुहुन्छ। कम्प्युटर इन्जिनियरिङमा स्नातक गरेपछि, अमितले नेपालका मानिसहरूका लागि दैनिक डिजिटल कार्यप्रवाहका चुनौतीहरू समाधान गर्ने उपयोगी उपकरणहरू निर्माण गर्न आफ्नो प्रयास समर्पित गर्नुभयो, र सँगसँगै अन्तर्राष्ट्रिय ब्रान्डहरूका लागि अनुकूलन अनुप्रयोगहरू विस्तार गर्नुभयो। उहाँको दर्शन हल्का कोड कार्यान्वयन, अनुकूलन नियोन चमकहरूको साथ आधुनिक उत्तरदायी शैलीहरू, र स्थानीयकृत द्वि-भाषी अनुवादहरूमा केन्द्रित छ।"
+    biographyFullNp: "८ वर्षभन्दा बढी व्यावसायिक सफ्टवेयर इञ्जिनियरिङ अनुभवका साथ, अमित जोशी इन्टरप्राइज पोर्टलहरू, रिएक्टिभ वेब कम्पोनेन्टहरू, र रियल-टाइम सिङ्क्रोनाइजेसन इकोसिस्टमहरूको वास्तुकला डिजाइनमा विशेषज्ञ हुनुहुन्छ। कम्प्युटर इन्जिनियरिङमा स्नातक गरेपछि, अमितले नेपालका मानिसहरूका लागि दैनिक डिजिटल कार्यप्रवाहका चुनौतीहरू समाधान गर्ने उपयोगी उपकरणहरू निर्माण गर्न आफ्नो प्रयास समर्पित गर्नुभयो, र सँगसँगै अन्तर्राष्ट्रिय ब्रान्डहरूका लागि अनुकूलन अनुप्रयोगहरू विस्तार गर्नुभयो। उहाँको दर्शन हल्का कोड कार्यान्वयन, अनुकूलन नियोन चमकहरूको साथ आधुनिक उत्तरदायी शैलीहरू, र स्थानीयकृत द्वि-भाषी अनुवादहरूमा केन्द्रित छ।",
+    portalPillEn: "Amit Joshi Official Portal",
+    portalPillNp: "अमित जोशीको आधिकारिक पोर्टल",
+    executiveSummaryTitleEn: "Core Executive Summary",
+    executiveSummaryTitleNp: "मुख्य कार्यकारी संक्षेप",
+    bioBtnEn: "Read Full Biography",
+    bioBtnNp: "पूर्ण जीवनी पढ्नुहोस्",
+    connectBtnEn: "Connect to Me Portal",
+    connectBtnNp: "मेरो पोर्टलमा जोडिनुहोस्",
+    biographyTitleEn: "Biography of Amit Joshi",
+    biographyTitleNp: "अमित जोशीको जीवनी",
+    biographyTaglineEn: "Senior Full-Stack Architect & Digital Localizer",
+    biographyTaglineNp: "वरिष्ठ फुल-स्ट्याक आर्किटेक्ट र डिजिटल लोकलाइजर",
   },
   socials: [
     {
