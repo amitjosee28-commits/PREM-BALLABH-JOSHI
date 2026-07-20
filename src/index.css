@@ -15,6 +15,20 @@
   }
 }
 
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 2s ease-in-out infinite;
+}
+
 .vibroyg-text-gradient {
   background-image: linear-gradient(to right, #8f00ff, #4b0082, #0000ff, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8f00ff);
   background-size: 300% auto;

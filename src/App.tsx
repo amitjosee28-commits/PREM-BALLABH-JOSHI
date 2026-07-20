@@ -27,9 +27,25 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [lang, setLang] = useState<"en" | "np">("en");
   
-  // Real-time Database data state
-  const [portfolioData, setPortfolioData] = useState<PortfolioData>(defaultPortfolioData);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  // Real-time Database data state with localStorage caching for instantaneous boot
+  const [portfolioData, setPortfolioData] = useState<PortfolioData>(() => {
+    try {
+      const cached = localStorage.getItem("amit_portfolio_cache_v1");
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.warn("Failed to load portfolio cache:", e);
+    }
+    return defaultPortfolioData;
+  });
+  const [dataLoaded, setDataLoaded] = useState(() => {
+    try {
+      return !!localStorage.getItem("amit_portfolio_cache_v1");
+    } catch (e) {
+      return false;
+    }
+  });
 
   // Time state (Nepal time Gregorian/BS switcher)
   const [nepalTime, setNepalTime] = useState(getNepalBSAndGregorian());
@@ -65,6 +81,11 @@ export default function App() {
       const val = snapshot.val();
       if (val) {
         setPortfolioData(val);
+        try {
+          localStorage.setItem("amit_portfolio_cache_v1", JSON.stringify(val));
+        } catch (e) {
+          console.warn("Failed to save portfolio cache:", e);
+        }
       }
       setDataLoaded(true);
     }, (error) => {
@@ -197,6 +218,50 @@ export default function App() {
     }
     setMobileMenuOpen(false);
   };
+
+  if (!dataLoaded) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#030712] text-white font-sans select-none">
+        {/* Animated Cyber-network grid background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.15),transparent_60%)] animate-pulse pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(18,24,38,0.1)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
+        <div className="relative flex flex-col items-center space-y-6 max-w-md w-full px-6 text-center">
+          {/* Logo / Portal Icon Pulse */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-xl animate-ping" />
+            <div className="relative h-20 w-20 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 p-0.5 shadow-[0_0_30px_rgba(6,182,212,0.4)] animate-pulse">
+              <div className="h-full w-full rounded-full bg-[#030712] flex items-center justify-center">
+                <Sparkles className="h-8 w-8 text-cyan-400 animate-spin-slow" />
+              </div>
+            </div>
+          </div>
+
+          {/* Heading with VIBGYOR neon touch */}
+          <div className="space-y-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              Amit Joshi
+            </h1>
+            <p className="text-xs font-mono text-cyan-400/80 uppercase tracking-widest">
+              Connecting to Secure Realtime Node...
+            </p>
+          </div>
+
+          {/* Loading bar */}
+          <div className="w-full bg-white/5 h-1.5 border border-white/10 rounded-full overflow-hidden relative">
+            <div className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full animate-loading-bar" />
+          </div>
+
+          {/* Localizing Messages */}
+          <div className="text-[10px] font-mono text-gray-500 h-4 uppercase tracking-wider animate-pulse">
+            {lang === "en" 
+              ? "Synchronizing localized database content..." 
+              : "स्थानीयकृत डेटाबेस सामग्री सिङ्क्रोनाइज गर्दै..."}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const headerData = portfolioData.header || defaultPortfolioData.header;
   const homepageData = portfolioData.homepage || defaultPortfolioData.homepage;
