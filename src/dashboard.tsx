@@ -361,11 +361,20 @@ export default function Dashboard() {
 
   // Staging field helper
   const updateStagingField = (path: string, field: string, value: any) => {
+    let finalValue = value;
+    if (path === "maps" && (field === "permanentUrl" || field === "temporaryUrl") && typeof value === "string") {
+      if (value.includes("<iframe") && value.includes("src=")) {
+        const match = value.match(/src="([^"]+)"/);
+        if (match && match[1]) {
+          finalValue = match[1];
+        }
+      }
+    }
     setStagingData((prev: any) => ({
       ...prev,
       [path]: {
         ...prev[path],
-        [field]: value
+        [field]: finalValue
       }
     }));
   };
@@ -2119,18 +2128,66 @@ export default function Dashboard() {
             {activeCmsSection === "maps" && (
               <div className="space-y-6">
                 <div className="border-b border-white/5 pb-2">
-                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Google Maps embed URLs</h3>
-                  <p className="text-gray-500 mt-1">Configure iframe paths for Permanent and Temporary address cards.</p>
+                  <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Google Maps Embeds & Physical Addresses</h3>
+                  <p className="text-gray-500 mt-1">Configure physical addresses and Google Map iframe src parameters for Permanent and Current address cards.</p>
                 </div>
 
                 <div className="space-y-4">
+                  {activeLangTab === "en" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Current Address (En)</label>
+                        <input
+                          type="text"
+                          value={stagingData.maps?.temporaryAddressEn || ""}
+                          onChange={(e) => updateStagingField("maps", "temporaryAddressEn", e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          placeholder="Current Address: New Baneshwor, Kathmandu"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-gray-400 uppercase tracking-wide">Permanent Address (En)</label>
+                        <input
+                          type="text"
+                          value={stagingData.maps?.permanentAddressEn || ""}
+                          onChange={(e) => updateStagingField("maps", "permanentAddressEn", e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          placeholder="Permanent Address: Duhu 3, Darchula"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Current Address (Np)</label>
+                        <input
+                          type="text"
+                          value={stagingData.maps?.temporaryAddressNp || ""}
+                          onChange={(e) => updateStagingField("maps", "temporaryAddressNp", e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          placeholder="हालको ठेगाना: नयाँ बानेश्वर, काठमाडौं"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-mono font-bold text-purple-400 uppercase tracking-wide">Permanent Address (Np)</label>
+                        <input
+                          type="text"
+                          value={stagingData.maps?.permanentAddressNp || ""}
+                          onChange={(e) => updateStagingField("maps", "permanentAddressNp", e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          placeholder="स्थायी ठेगाना: दुहु ३, दार्चुला"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-1.5">
-                    <label className="font-mono font-bold text-gray-400 uppercase">Permanent Address Map link (src="..." url)</label>
-                    <textarea rows={3} value={stagingData.maps?.permanentUrl || ""} onChange={(e) => updateStagingField("maps", "permanentUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
+                    <label className="font-mono font-bold text-gray-400 uppercase">Permanent Address Map link (src="..." url or complete iframe element)</label>
+                    <textarea rows={3} value={stagingData.maps?.permanentUrl || ""} onChange={(e) => updateStagingField("maps", "permanentUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL or full iframe element here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="font-mono font-bold text-gray-400 uppercase">Temporary Address Map link (src="..." url)</label>
-                    <textarea rows={3} value={stagingData.maps?.temporaryUrl || ""} onChange={(e) => updateStagingField("maps", "temporaryUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
+                    <label className="font-mono font-bold text-gray-400 uppercase">Temporary/Current Address Map link (src="..." url or complete iframe element)</label>
+                    <textarea rows={3} value={stagingData.maps?.temporaryUrl || ""} onChange={(e) => updateStagingField("maps", "temporaryUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL or full iframe element here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
                   </div>
                 </div>
               </div>

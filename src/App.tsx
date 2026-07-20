@@ -52,6 +52,9 @@ export default function App() {
   // Downloads Modal state
   const [isDownloadsModalOpen, setIsDownloadsModalOpen] = useState(false);
 
+  // Useful Links list truncation state
+  const [isShowingAllUsefulLinks, setIsShowingAllUsefulLinks] = useState(false);
+
   // Ken Burns Cinematic Slider state
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
@@ -679,6 +682,10 @@ export default function App() {
           lang={lang}
           permanentMapUrl={portfolioData.maps?.permanentUrl || defaultPortfolioData.maps.permanentUrl}
           temporaryMapUrl={portfolioData.maps?.temporaryUrl || defaultPortfolioData.maps.temporaryUrl}
+          permanentAddressEn={portfolioData.maps?.permanentAddressEn || defaultPortfolioData.maps.permanentAddressEn}
+          permanentAddressNp={portfolioData.maps?.permanentAddressNp || defaultPortfolioData.maps.permanentAddressNp}
+          temporaryAddressEn={portfolioData.maps?.temporaryAddressEn || defaultPortfolioData.maps.temporaryAddressEn}
+          temporaryAddressNp={portfolioData.maps?.temporaryAddressNp || defaultPortfolioData.maps.temporaryAddressNp}
         />
       </div>
 
@@ -713,20 +720,36 @@ export default function App() {
               </h4>
               <ul className="space-y-2 text-xs">
                 {(portfolioData.usefulLinks || []).length > 0 ? (
-                  (portfolioData.usefulLinks || []).map((link, idx) => (
-                    <li key={link.id || idx}>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors flex items-center space-x-1.5">
-                        <ExternalLink className="h-3 w-3 text-cyan-400/70" />
-                        <span>{lang === "en" ? link.titleEn : link.titleNp}</span>
-                      </a>
-                    </li>
-                  ))
+                  (() => {
+                    const links = portfolioData.usefulLinks || [];
+                    const displayedLinks = isShowingAllUsefulLinks ? links : links.slice(0, 8);
+                    return displayedLinks.map((link, idx) => (
+                      <li key={link.id || idx}>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors flex items-center space-x-1.5">
+                          <ExternalLink className="h-3 w-3 text-cyan-400/70" />
+                          <span>{lang === "en" ? link.titleEn : link.titleNp}</span>
+                        </a>
+                      </li>
+                    ));
+                  })()
                 ) : (
                   <li className="text-gray-600 font-mono italic text-[11px]" data-en="No links staged" data-np="कुनै लिङ्क उपलब्ध छैन">
                     {lang === "en" ? "No links staged" : "कुनै लिङ्क उपलब्ध छैन"}
                   </li>
                 )}
               </ul>
+              {(portfolioData.usefulLinks || []).length > 8 && (
+                <button
+                  onClick={() => setIsShowingAllUsefulLinks(!isShowingAllUsefulLinks)}
+                  className="mt-2 text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors flex items-center space-x-1 focus:outline-none cursor-pointer"
+                >
+                  <span>
+                    {isShowingAllUsefulLinks 
+                      ? (lang === "en" ? "Show Less ↑" : "कम देखाउनुहोस् ↑") 
+                      : (lang === "en" ? `Show More (${(portfolioData.usefulLinks || []).length - 8} more) ↓` : `थप देखाउनुहोस् (${toNepaliDigits((portfolioData.usefulLinks || []).length - 8)} थप) ↓`)}
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Column 3: Downloads Tab (PDF/JPG/PNG/GIF Supportable) */}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, memo } from "react";
 import { BookOpen, ExternalLink, X } from "lucide-react";
 
 interface InitiativeItem {
@@ -16,6 +16,17 @@ interface InitiativesSectionProps {
   initiatives: InitiativeItem[];
   lang: "en" | "np";
 }
+
+const FacebookEmbed = memo(({ iframeHtml }: { iframeHtml: string }) => {
+  return (
+    <div 
+      className="w-full h-full"
+      dangerouslySetInnerHTML={{ __html: iframeHtml }} 
+    />
+  );
+}, (prev, next) => prev.iframeHtml === next.iframeHtml);
+
+FacebookEmbed.displayName = "FacebookEmbed";
 
 export default function InitiativesSection({ initiatives, lang }: InitiativesSectionProps) {
   const [selectedInit, setSelectedInit] = useState<InitiativeItem | null>(null);
@@ -93,10 +104,7 @@ export default function InitiativesSection({ initiatives, lang }: InitiativesSec
                 {/* Left/Right Column: Facebook Iframe Element */}
                 <div className={`lg:col-span-5 h-[350px] w-full bg-black/40 rounded-2xl border border-white/5 overflow-hidden shadow-inner flex flex-col items-center justify-center relative ${isEven ? "lg:order-2" : "lg:order-1"}`}>
                   {item.fbIframe ? (
-                    <div 
-                      className="w-full h-full"
-                      dangerouslySetInnerHTML={{ __html: item.fbIframe }} 
-                    />
+                    <FacebookEmbed iframeHtml={item.fbIframe} />
                   ) : (
                     <div className="text-gray-500 font-mono text-xs text-center p-4">
                       {lang === "en" ? "No Facebook Iframe Set" : "फेसबुक आईफ्रेम सेट गरिएको छैन"}

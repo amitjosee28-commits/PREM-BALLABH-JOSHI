@@ -5,9 +5,21 @@ interface ContactFormProps {
   lang: "en" | "np";
   permanentMapUrl: string;
   temporaryMapUrl: string;
+  permanentAddressEn?: string;
+  permanentAddressNp?: string;
+  temporaryAddressEn?: string;
+  temporaryAddressNp?: string;
 }
 
-export default function ContactForm({ lang, permanentMapUrl, temporaryMapUrl }: ContactFormProps) {
+export default function ContactForm({ 
+  lang, 
+  permanentMapUrl, 
+  temporaryMapUrl,
+  permanentAddressEn,
+  permanentAddressNp,
+  temporaryAddressEn,
+  temporaryAddressNp
+}: ContactFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -185,7 +197,9 @@ export default function ContactForm({ lang, permanentMapUrl, temporaryMapUrl }: 
               <div className="flex items-center space-x-2 border-b border-white/5 pb-2 text-white">
                 <MapPin className="h-4 w-4 text-purple-400" />
                 <h4 className="text-sm font-bold font-sans">
-                  {lang === "en" ? "Current Address: Lalitpur, Nepal" : "हालको ठेगाना: ललितपुर, नेपाल"}
+                  {lang === "en" 
+                    ? (temporaryAddressEn || "Current Address: New Baneshwor, Kathmandu") 
+                    : (temporaryAddressNp || "हालको ठेगाना: नयाँ बानेश्वर, काठमाडौं")}
                 </h4>
               </div>
               <div className="h-[210px] w-full rounded-xl border border-white/5 overflow-hidden shadow-inner relative bg-black/40">
@@ -214,7 +228,9 @@ export default function ContactForm({ lang, permanentMapUrl, temporaryMapUrl }: 
               <div className="flex items-center space-x-2 border-b border-white/5 pb-2 text-white">
                 <MapPin className="h-4 w-4 text-cyan-400" />
                 <h4 className="text-sm font-bold font-sans">
-                  {lang === "en" ? "Permanent Address: Kathmandu, Nepal" : "स्थायी ठेगाना: काठमाडौं, नेपाल"}
+                  {lang === "en" 
+                    ? (permanentAddressEn || "Permanent Address: Duhu 3, Darchula") 
+                    : (permanentAddressNp || "स्थायी ठेगाना: दुहु ३, दार्चुला")}
                 </h4>
               </div>
               <div className="h-[210px] w-full rounded-xl border border-white/5 overflow-hidden shadow-inner relative bg-black/40">

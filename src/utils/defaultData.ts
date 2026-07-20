@@ -112,6 +112,10 @@ export interface PortfolioData {
   maps: {
     permanentUrl: string;
     temporaryUrl: string;
+    permanentAddressEn?: string;
+    permanentAddressNp?: string;
+    temporaryAddressEn?: string;
+    temporaryAddressNp?: string;
   };
   privacyPolicyEn?: string;
   privacyPolicyNp?: string;
@@ -134,8 +138,8 @@ export interface PortfolioData {
 
 export const defaultPortfolioData: PortfolioData = {
   header: {
-    logoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    faviconUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    logoUrl: "",
+    faviconUrl: "",
     brandTextEn: "Amit Joshi",
     brandTextNp: "अमित जोशी"
   },
@@ -541,8 +545,12 @@ export const defaultPortfolioData: PortfolioData = {
     buttonUrl: "https://wa.me/9779800000000?text=Hello%20Amit%2C%20I%20saw%20your%20announcement%20popup%20and%20want%20to%20schedule%20a%20consultation%21"
   },
   maps: {
-    permanentUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m4!2s0x39eb198a307baabf%3A0xb5137c15185d2612!2sKathmandu!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp",
-    temporaryUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1m4!2s0x39eb1923bf62758f%3A0xb7e5ff8676bf9579!2sLalitpur!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp"
+    permanentUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d509.7736340911179!2d80.57885568435034!3d29.884878628769556!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39a6b300325ec949%3A0x2d96d9e1f8d3f6a2!2sBarbaj%20Rural%20Road!5e1!3m2!1sen!2snp!4v1784441306570!5m2!1sen!2snp",
+    temporaryUrl: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d271.68799683989323!2d85.34146221988118!3d27.692376061527767!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sen!2snp!4v1784441110308!5m2!1sen!2snp",
+    permanentAddressEn: "Permanent Address: Duhu 3, Darchula",
+    permanentAddressNp: "स्थायी ठेगाना: दुहु ३, दार्चुला",
+    temporaryAddressEn: "Current Address: New Baneshwor, Kathmandu",
+    temporaryAddressNp: "हालको ठेगाना: नयाँ बानेश्वर, काठमाडौं"
   },
   privacyPolicyEn: "This Privacy Policy describes how we collect, use, and handle your information. Your trust is important to us, and we are committed to protecting your personal data.",
   privacyPolicyNp: "यो गोपनीयता नीतिले हामी कसरी तपाईंको जानकारी सङ्कलन, प्रयोग र व्यवस्थापन गर्छौं भन्ने कुरा वर्णन गर्दछ। तपाईंको विश्वास हाम्रो लागि महत्त्वपूर्ण छ, र हामी तपाईंको व्यक्तिगत डेटा सुरक्षित गर्न प्रतिबद्ध छौं।",
