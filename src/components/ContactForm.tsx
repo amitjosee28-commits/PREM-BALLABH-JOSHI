@@ -25,7 +25,8 @@ export default function ContactForm({
   const [formData, setFormData] = useState({
     name: "",
     address: "",
-    contact: "",
+    gmail: "",
+    phone: "",
     message: "",
   });
 
@@ -34,13 +35,43 @@ export default function ContactForm({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "phone") {
+      const val = value.replace(/\D/g, "").slice(0, 10);
+      setFormData((prev) => ({ ...prev, phone: val }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.message) {
-      alert(lang === "en" ? "Please fill in your name and message." : "कृपया आफ्नो नाम र सन्देश भर्नुहोस्।");
+    if (!formData.name || !formData.message || !formData.gmail || !formData.phone) {
+      alert(lang === "en" ? "Please fill in all required fields." : "कृपया सबै आवश्यक क्षेत्रहरू भर्नुहोस्।");
+      return;
+    }
+
+    const gmailCleaned = formData.gmail.trim().toLowerCase();
+    const phoneCleaned = formData.phone.trim();
+
+    // Gmail validation: must end with @gmail.com
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!gmailRegex.test(gmailCleaned)) {
+      alert(
+        lang === "en"
+          ? "Please enter a valid Gmail address (must contain @ and end with gmail.com)."
+          : "कृपया मान्य जिमेल (Gmail) ठेगाना राख्नुहोस् (@ र gmail.com अनिवार्य छ)।"
+      );
+      return;
+    }
+
+    // Nepali mobile number validation: 10 digits starting with 9
+    const phoneRegex = /^9\d{9}$/;
+    if (!phoneRegex.test(phoneCleaned)) {
+      alert(
+        lang === "en"
+          ? "Please enter a valid 10-digit Nepali mobile number starting with 9."
+          : "कृपया ९ बाट सुरु हुने ठीक १० अंकको मान्य नेपाली मोबाइल नम्बर राख्नुहोस्।"
+      );
       return;
     }
 
@@ -54,7 +85,9 @@ export default function ContactForm({
         id: newSuggestionRef.key,
         name: formData.name,
         address: formData.address || "",
-        contact: formData.contact || "",
+        contact: `+977 ${phoneCleaned} (${gmailCleaned})`,
+        gmail: gmailCleaned,
+        phone: `+977 ${phoneCleaned}`,
         message: formData.message,
         timestamp: new Date().toISOString()
       });
@@ -64,7 +97,8 @@ export default function ContactForm({
       setFormData({
         name: "",
         address: "",
-        contact: "",
+        gmail: "",
+        phone: "",
         message: "",
       });
     } catch (err) {
@@ -173,19 +207,41 @@ export default function ContactForm({
                   />
                 </div>
 
-                {/* Contact/Phone field */}
+                {/* Gmail address field */}
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
-                    {lang === "en" ? "Contact Number / Email" : "सम्पर्क नम्बर / इमेल"}
+                    {lang === "en" ? "Gmail Address *" : "जिमेल ठेगाना *"}
                   </label>
                   <input
-                    type="text"
-                    name="contact"
-                    value={formData.contact}
+                    type="email"
+                    name="gmail"
+                    required
+                    value={formData.gmail}
                     onChange={handleChange}
-                    placeholder={lang === "en" ? "+977 98XXXXXXX or email" : "+९७७ ९८XXXXXXX वा इमेल"}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                    placeholder="amit@gmail.com"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
                   />
+                </div>
+
+                {/* Nepali mobile number field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
+                    {lang === "en" ? "Nepali Mobile Number *" : "नेपाली मोबाइल नम्बर *"}
+                  </label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3.5 rounded-l-xl border border-r-0 border-white/10 bg-white/5 text-xs text-gray-400 font-mono font-bold select-none">
+                      +977
+                    </span>
+                    <input
+                      type="text"
+                      name="phone"
+                      required
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="9XXXXXXXXX"
+                      className="w-full bg-white/5 border border-white/10 rounded-r-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                    />
+                  </div>
                 </div>
 
                 {/* Message field */}

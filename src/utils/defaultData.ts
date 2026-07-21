@@ -107,6 +107,26 @@ export interface PortfolioData {
     specialNoticeNp?: string;
     customQuestionsEn?: string;
     customQuestionsNp?: string;
+    pdfEnabled?: boolean;
+    pdfRequired?: boolean;
+    pdfLabelEn?: string;
+    pdfLabelNp?: string;
+    photo1Enabled?: boolean;
+    photo1Required?: boolean;
+    photo1LabelEn?: string;
+    photo1LabelNp?: string;
+    photo2Enabled?: boolean;
+    photo2Required?: boolean;
+    photo2LabelEn?: string;
+    photo2LabelNp?: string;
+    photo3Enabled?: boolean;
+    photo3Required?: boolean;
+    photo3LabelEn?: string;
+    photo3LabelNp?: string;
+    photo4Enabled?: boolean;
+    photo4Required?: boolean;
+    photo4LabelEn?: string;
+    photo4LabelNp?: string;
   }>;
   popup: {
     active: boolean;

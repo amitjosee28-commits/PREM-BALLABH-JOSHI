@@ -134,7 +134,27 @@ export default function Dashboard() {
     specialNoticeEn: "",
     specialNoticeNp: "",
     customQuestionsEn: "",
-    customQuestionsNp: ""
+    customQuestionsNp: "",
+    pdfEnabled: false,
+    pdfRequired: false,
+    pdfLabelEn: "",
+    pdfLabelNp: "",
+    photo1Enabled: false,
+    photo1Required: false,
+    photo1LabelEn: "",
+    photo1LabelNp: "",
+    photo2Enabled: false,
+    photo2Required: false,
+    photo2LabelEn: "",
+    photo2LabelNp: "",
+    photo3Enabled: false,
+    photo3Required: false,
+    photo3LabelEn: "",
+    photo3LabelNp: "",
+    photo4Enabled: false,
+    photo4Required: false,
+    photo4LabelEn: "",
+    photo4LabelNp: ""
   });
 
   // Suggestion & Application Box states
@@ -147,9 +167,24 @@ export default function Dashboard() {
       const snapshot = await get(ref(db, "suggestions"));
       if (snapshot.exists()) {
         const data = snapshot.val();
+        const now = Date.now();
+        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-        setSuggestions(list);
+        
+        // Find and delete suggestions older than 2 days
+        const validList: any[] = [];
+        for (const item of list) {
+          const timestampMs = new Date(item.timestamp || 0).getTime();
+          if (now - timestampMs > twoDaysMs) {
+            await set(ref(db, `suggestions/${item.id}`), null);
+            console.log(`Auto-deleted expired suggestion: ${item.id}`);
+          } else {
+            validList.push(item);
+          }
+        }
+
+        validList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        setSuggestions(validList);
       } else {
         setSuggestions([]);
       }
@@ -163,9 +198,24 @@ export default function Dashboard() {
       const snapshot = await get(ref(db, "service_applications"));
       if (snapshot.exists()) {
         const data = snapshot.val();
+        const now = Date.now();
+        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
         const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-        setApplications(list);
+        
+        // Find and delete applications older than 2 days
+        const validList: any[] = [];
+        for (const item of list) {
+          const timestampMs = new Date(item.timestamp || 0).getTime();
+          if (now - timestampMs > twoDaysMs) {
+            await set(ref(db, `service_applications/${item.id}`), null);
+            console.log(`Auto-deleted expired service application: ${item.id}`);
+          } else {
+            validList.push(item);
+          }
+        }
+
+        validList.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        setApplications(validList);
       } else {
         setApplications([]);
       }
@@ -606,7 +656,27 @@ export default function Dashboard() {
       specialNoticeEn: "",
       specialNoticeNp: "",
       customQuestionsEn: "",
-      customQuestionsNp: ""
+      customQuestionsNp: "",
+      pdfEnabled: false,
+      pdfRequired: false,
+      pdfLabelEn: "",
+      pdfLabelNp: "",
+      photo1Enabled: false,
+      photo1Required: false,
+      photo1LabelEn: "",
+      photo1LabelNp: "",
+      photo2Enabled: false,
+      photo2Required: false,
+      photo2LabelEn: "",
+      photo2LabelNp: "",
+      photo3Enabled: false,
+      photo3Required: false,
+      photo3LabelEn: "",
+      photo3LabelNp: "",
+      photo4Enabled: false,
+      photo4Required: false,
+      photo4LabelEn: "",
+      photo4LabelNp: ""
     });
     setEditingItemId(null);
     showToast("success", "Premium service configuration saved.");
@@ -2030,45 +2100,154 @@ export default function Dashboard() {
                   <div className="border-t border-white/5 pt-4 space-y-4">
                     <h4 className="font-mono font-bold text-cyan-400 uppercase text-[10px] tracking-wider">Apply Now Custom Form CMS Controls</h4>
                     
+                    {/* Special Notice and Custom Questions (Split by Lang tab) */}
                     {activeLangTab === "en" ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/[0.02] p-4 rounded-xl border border-white/5">
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="font-mono font-bold text-gray-400 uppercase">Special Notice / Instructions (En)</label>
+                          <label className="font-mono font-bold text-gray-400 uppercase text-[11px]">Special Notice / Instructions (En)</label>
                           <textarea rows={2} value={serviceForm.specialNoticeEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, specialNoticeEn: e.target.value }))} placeholder="Notice shown at top of the application modal" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
                         </div>
-                        <div className="space-y-1.5">
-                          <label className="font-mono font-bold text-gray-400 uppercase">Photo Upload Reqs (En, comma-separated)</label>
-                          <input type="text" value={serviceForm.photoReqsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, photoReqsEn: e.target.value }))} placeholder="e.g., Passport Photo, Citizenship Copy" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="font-mono font-bold text-gray-400 uppercase">PDF/Doc Upload Reqs (En, comma-separated)</label>
-                          <input type="text" value={serviceForm.docReqsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, docReqsEn: e.target.value }))} placeholder="e.g., CV / Resume, Project Proposal" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
-                        </div>
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="font-mono font-bold text-gray-400 uppercase">Custom Dynamic Questions (En, comma-separated)</label>
+                          <label className="font-mono font-bold text-gray-400 uppercase text-[11px]">Custom Dynamic Questions (En, comma-separated)</label>
                           <input type="text" value={serviceForm.customQuestionsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, customQuestionsEn: e.target.value }))} placeholder="e.g., Previous Tech Stack?, Expected Completion?" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        {/* Legacy Inputs for compatibility */}
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-500 uppercase text-[10px]">Legacy Photo Reqs (En, comma-separated)</label>
+                          <input type="text" value={serviceForm.photoReqsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, photoReqsEn: e.target.value }))} placeholder="Legacy style comma-separated list" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-1.5 text-[11px] text-gray-400" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-500 uppercase text-[10px]">Legacy PDF Reqs (En, comma-separated)</label>
+                          <input type="text" value={serviceForm.docReqsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, docReqsEn: e.target.value }))} placeholder="Legacy style comma-separated list" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-1.5 text-[11px] text-gray-400" />
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/[0.02] p-4 rounded-xl border border-white/5">
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="font-mono font-bold text-purple-400 uppercase">Special Notice / Instructions (Np)</label>
+                          <label className="font-mono font-bold text-purple-400 uppercase text-[11px]">Special Notice / Instructions (Np)</label>
                           <textarea rows={2} value={serviceForm.specialNoticeNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, specialNoticeNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
                         </div>
-                        <div className="space-y-1.5">
-                          <label className="font-mono font-bold text-purple-400 uppercase">Photo Upload Reqs (Np, comma-separated)</label>
-                          <input type="text" value={serviceForm.photoReqsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, photoReqsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="font-mono font-bold text-purple-400 uppercase">PDF/Doc Upload Reqs (Np, comma-separated)</label>
-                          <input type="text" value={serviceForm.docReqsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, docReqsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
-                        </div>
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="font-mono font-bold text-purple-400 uppercase">Custom Dynamic Questions (Np, comma-separated)</label>
+                          <label className="font-mono font-bold text-purple-400 uppercase text-[11px]">Custom Dynamic Questions (Np, comma-separated)</label>
                           <input type="text" value={serviceForm.customQuestionsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, customQuestionsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        {/* Legacy Inputs for compatibility */}
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-500 uppercase text-[10px]">Legacy Photo Reqs (Np, comma-separated)</label>
+                          <input type="text" value={serviceForm.photoReqsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, photoReqsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-1.5 text-[11px] text-gray-400" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-500 uppercase text-[10px]">Legacy PDF Reqs (Np, comma-separated)</label>
+                          <input type="text" value={serviceForm.docReqsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, docReqsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-1.5 text-[11px] text-gray-400" />
                         </div>
                       </div>
                     )}
+
+                    {/* Unified Dynamic PDF Form Controls */}
+                    <div className="bg-cyan-950/20 border border-cyan-500/20 p-4 rounded-xl space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" id="pdfEnabled" checked={serviceForm.pdfEnabled || false} onChange={(e) => setServiceForm(prev => ({ ...prev, pdfEnabled: e.target.checked }))} className="text-cyan-500 rounded bg-black border-white/10 focus:ring-0" />
+                          <label htmlFor="pdfEnabled" className="text-xs font-bold font-mono uppercase text-cyan-400 cursor-pointer">Enable PDF Upload Option (Max 100KB)</label>
+                        </div>
+                        {serviceForm.pdfEnabled && (
+                          <div className="flex items-center space-x-2">
+                            <input type="checkbox" id="pdfRequired" checked={serviceForm.pdfRequired || false} onChange={(e) => setServiceForm(prev => ({ ...prev, pdfRequired: e.target.checked }))} className="text-cyan-500 rounded bg-black border-white/10 focus:ring-0" />
+                            <label htmlFor="pdfRequired" className="text-xs font-bold font-mono uppercase text-red-400 cursor-pointer">Compulsory / Required</label>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {serviceForm.pdfEnabled && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase">PDF Custom Label (English)</label>
+                            <input type="text" value={serviceForm.pdfLabelEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, pdfLabelEn: e.target.value }))} placeholder="e.g. Project Proposal, CV" className="w-full bg-black/40 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase">PDF Custom Label (Nepali)</label>
+                            <input type="text" value={serviceForm.pdfLabelNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, pdfLabelNp: e.target.value }))} placeholder="e.g. परियोजना प्रस्ताव" className="w-full bg-black/40 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Unified Dynamic 4 Photo Slots Controls */}
+                    <div className="bg-purple-950/20 border border-purple-500/20 p-4 rounded-xl space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                        <span className="text-xs font-extrabold font-mono uppercase text-purple-400">Photo Slots Configuration (Maximum 4 Photos, JPG accepted)</span>
+                      </div>
+                      
+                      <div className="space-y-3 divide-y divide-white/5">
+                        {[1, 2, 3, 4].map((slotNum) => {
+                          const isEnabledKey = `photo${slotNum}Enabled` as any;
+                          const isRequiredKey = `photo${slotNum}Required` as any;
+                          const labelEnKey = `photo${slotNum}LabelEn` as any;
+                          const labelNpKey = `photo${slotNum}LabelNp` as any;
+
+                          const isEnabled = (serviceForm as any)[isEnabledKey] || false;
+                          const isRequired = (serviceForm as any)[isRequiredKey] || false;
+                          const labelEn = (serviceForm as any)[labelEnKey] || "";
+                          const labelNp = (serviceForm as any)[labelNpKey] || "";
+
+                          return (
+                            <div key={slotNum} className="pt-3 first:pt-0 space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center space-x-2">
+                                  <input 
+                                    type="checkbox" 
+                                    id={`photo${slotNum}Enabled`} 
+                                    checked={isEnabled} 
+                                    onChange={(e) => setServiceForm(prev => ({ ...prev, [isEnabledKey]: e.target.checked }))} 
+                                    className="text-purple-500 rounded bg-black border-white/10 focus:ring-0" 
+                                  />
+                                  <label htmlFor={`photo${slotNum}Enabled`} className="text-xs font-bold font-mono uppercase text-purple-300 cursor-pointer">Enable Photo Slot {slotNum}</label>
+                                </div>
+                                {isEnabled && (
+                                  <div className="flex items-center space-x-2">
+                                    <input 
+                                      type="checkbox" 
+                                      id={`photo${slotNum}Required`} 
+                                      checked={isRequired} 
+                                      onChange={(e) => setServiceForm(prev => ({ ...prev, [isRequiredKey]: e.target.checked }))} 
+                                      className="text-purple-500 rounded bg-black border-white/10 focus:ring-0" 
+                                    />
+                                    <label htmlFor={`photo${slotNum}Required`} className="text-xs font-bold font-mono uppercase text-red-400 cursor-pointer">Compulsory / Required</label>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {isEnabled && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-mono text-gray-400 uppercase">Photo {slotNum} Custom Name (English) *</label>
+                                    <input 
+                                      type="text" 
+                                      required 
+                                      value={labelEn} 
+                                      onChange={(e) => setServiceForm(prev => ({ ...prev, [labelEnKey]: e.target.value }))} 
+                                      placeholder="e.g. Citizenship Front, Portrait Photo" 
+                                      className="w-full bg-[#0b0f19] border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white" 
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-mono text-gray-400 uppercase">Photo {slotNum} Custom Name (Nepali) *</label>
+                                    <input 
+                                      type="text" 
+                                      required 
+                                      value={labelNp} 
+                                      onChange={(e) => setServiceForm(prev => ({ ...prev, [labelNpKey]: e.target.value }))} 
+                                      placeholder="e.g. नागरिकताको अगाडि" 
+                                      className="w-full bg-[#0b0f19] border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white" 
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-2">
@@ -2109,7 +2288,27 @@ export default function Dashboard() {
                               specialNoticeEn: s.specialNoticeEn || "",
                               specialNoticeNp: s.specialNoticeNp || "",
                               customQuestionsEn: s.customQuestionsEn || "",
-                              customQuestionsNp: s.customQuestionsNp || ""
+                              customQuestionsNp: s.customQuestionsNp || "",
+                              pdfEnabled: s.pdfEnabled ?? false,
+                              pdfRequired: s.pdfRequired ?? false,
+                              pdfLabelEn: s.pdfLabelEn || "",
+                              pdfLabelNp: s.pdfLabelNp || "",
+                              photo1Enabled: s.photo1Enabled ?? false,
+                              photo1Required: s.photo1Required ?? false,
+                              photo1LabelEn: s.photo1LabelEn || "",
+                              photo1LabelNp: s.photo1LabelNp || "",
+                              photo2Enabled: s.photo2Enabled ?? false,
+                              photo2Required: s.photo2Required ?? false,
+                              photo2LabelEn: s.photo2LabelEn || "",
+                              photo2LabelNp: s.photo2LabelNp || "",
+                              photo3Enabled: s.photo3Enabled ?? false,
+                              photo3Required: s.photo3Required ?? false,
+                              photo3LabelEn: s.photo3LabelEn || "",
+                              photo3LabelNp: s.photo3LabelNp || "",
+                              photo4Enabled: s.photo4Enabled ?? false,
+                              photo4Required: s.photo4Required ?? false,
+                              photo4LabelEn: s.photo4LabelEn || "",
+                              photo4LabelNp: s.photo4LabelNp || ""
                             }); 
                           }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
                           <button onClick={() => handleDeleteService(s.id)} className="p-2 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>

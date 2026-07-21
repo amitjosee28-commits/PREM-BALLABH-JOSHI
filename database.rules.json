@@ -29,7 +29,7 @@
         ".write": "!data.exists() && newData.exists()",
         
         // Enforce strong schema validation matching the application form requirements
-        ".validate": "newData.hasChildren(['serviceId', 'serviceTitle', 'name', 'contact', 'email', 'timestamp']) && newData.child('serviceId').isString() && newData.child('serviceTitle').isString() && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('contact').isString() && newData.child('contact').val().matches(/^\\+977\\s?9\\d{9}$/) && newData.child('email').isString() && newData.child('email').val().matches(/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$/) && newData.child('timestamp').isString()"
+        ".validate": "newData.hasChildren(['serviceId', 'serviceTitle', 'name', 'contact', 'email', 'timestamp']) && newData.child('serviceId').isString() && newData.child('serviceTitle').isString() && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('contact').isString() && newData.child('contact').val().matches(/^((\\+?977)?\\s?9\\d{9})$/) && newData.child('email').isString() && newData.child('email').val().matches(/^[A-Za-z0-9._%+-]+@gmail\\.[Cc][Oo][Mm]$/) && newData.child('timestamp').isString()"
       }
     },
     "site_stats": {
