@@ -738,6 +738,8 @@ export default function App() {
           services={portfolioData.services || defaultPortfolioData.services}
           interests={portfolioData.interests || defaultPortfolioData.interests}
           lang={lang}
+          logoUrl={portfolioData.header?.logoUrl}
+          faviconUrl={portfolioData.header?.faviconUrl}
         />
       </div>
 

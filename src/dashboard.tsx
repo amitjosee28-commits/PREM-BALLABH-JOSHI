@@ -490,10 +490,17 @@ export default function Dashboard() {
   const updateStagingField = (path: string, field: string, value: any) => {
     let finalValue = value;
     if (path === "maps" && (field === "permanentUrl" || field === "temporaryUrl") && typeof value === "string") {
-      if (value.includes("<iframe") && value.includes("src=")) {
-        const match = value.match(/src="([^"]+)"/);
+      const trimmed = value.trim();
+      if (trimmed.toLowerCase().includes("<iframe") || trimmed.toLowerCase().includes("src=")) {
+        const srcRegex = /\bsrc\s*=\s*['"]([^'"]+)['"]/i;
+        const match = trimmed.match(srcRegex);
         if (match && match[1]) {
           finalValue = match[1];
+        } else {
+          const backupMatch = trimmed.match(/src\s*=\s*["']([^"']+)["']/i);
+          if (backupMatch && backupMatch[1]) {
+            finalValue = backupMatch[1];
+          }
         }
       }
     }
@@ -2783,10 +2790,20 @@ export default function Dashboard() {
                   <div className="space-y-1.5">
                     <label className="font-mono font-bold text-gray-400 uppercase">Permanent Address Map link (src="..." url or complete iframe element)</label>
                     <textarea rows={3} value={stagingData.maps?.permanentUrl || ""} onChange={(e) => updateStagingField("maps", "permanentUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL or full iframe element here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
+                    {stagingData.maps?.permanentUrl && !(stagingData.maps.permanentUrl.includes("/maps/embed") || stagingData.maps.permanentUrl.includes("google.com/maps/embed")) && (
+                      <p className="text-[11px] text-amber-400 font-mono mt-1 bg-amber-500/10 p-2 border border-amber-500/20 rounded-lg">
+                        ⚠️ Warning: This doesn't look like a Google Maps Embed URL. Please copy the HTML iframe code from Google Maps (Share &gt; Embed a map) and paste it here, which will automatically embed the interactive map.
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <label className="font-mono font-bold text-gray-400 uppercase">Temporary/Current Address Map link (src="..." url or complete iframe element)</label>
                     <textarea rows={3} value={stagingData.maps?.temporaryUrl || ""} onChange={(e) => updateStagingField("maps", "temporaryUrl", e.target.value)} placeholder="Paste the exact Google Map iframe 'src' URL or full iframe element here" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white font-mono leading-normal" />
+                    {stagingData.maps?.temporaryUrl && !(stagingData.maps.temporaryUrl.includes("/maps/embed") || stagingData.maps.temporaryUrl.includes("google.com/maps/embed")) && (
+                      <p className="text-[11px] text-amber-400 font-mono mt-1 bg-amber-500/10 p-2 border border-amber-500/20 rounded-lg">
+                        ⚠️ Warning: This doesn't look like a Google Maps Embed URL. Please copy the HTML iframe code from Google Maps (Share &gt; Embed a map) and paste it here, which will automatically embed the interactive map.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

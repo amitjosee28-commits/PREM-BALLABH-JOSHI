@@ -61,13 +61,57 @@ interface InterestItem {
   icon: string;
 }
 
+// Image compression helper using Canvas to keep base64 payload size under control and avoid firebase database write failures
+const compressImage = (file: File, maxWidth = 1000, maxHeight = 1000, quality = 0.75): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 interface ServicesSectionProps {
   services: ServiceItem[];
   interests: InterestItem[];
   lang: "en" | "np";
+  logoUrl?: string;
+  faviconUrl?: string;
 }
 
-export default function ServicesSection({ services, interests, lang }: ServicesSectionProps) {
+export default function ServicesSection({ services, interests, lang, logoUrl, faviconUrl }: ServicesSectionProps) {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -133,6 +177,14 @@ export default function ServicesSection({ services, interests, lang }: ServicesS
           );
           return;
         }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setAttachments(prev => {
+            const filtered = prev.filter(att => att.name !== fieldName);
+            return [...filtered, { name: fieldName, fileName: file.name, data: reader.result as string }];
+          });
+        };
+        reader.readAsDataURL(file);
       } else {
         // Image only - strictly JPG / JPEG
         const extension = file.name.split('.').pop()?.toLowerCase();
@@ -144,16 +196,28 @@ export default function ServicesSection({ services, interests, lang }: ServicesS
           );
           return;
         }
-      }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAttachments(prev => {
-          const filtered = prev.filter(att => att.name !== fieldName);
-          return [...filtered, { name: fieldName, fileName: file.name, data: reader.result as string }];
-        });
-      };
-      reader.readAsDataURL(file);
+        // Compress the image down to < 1000px and 75% quality
+        compressImage(file)
+          .then((compressedBase64) => {
+            setAttachments(prev => {
+              const filtered = prev.filter(att => att.name !== fieldName);
+              return [...filtered, { name: fieldName, fileName: file.name, data: compressedBase64 }];
+            });
+          })
+          .catch((err) => {
+            console.error("Error compressing uploaded photo:", err);
+            // Fallback to uncompressed read
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setAttachments(prev => {
+                const filtered = prev.filter(att => att.name !== fieldName);
+                return [...filtered, { name: fieldName, fileName: file.name, data: reader.result as string }];
+              });
+            };
+            reader.readAsDataURL(file);
+          });
+      }
     }
   };
 
@@ -293,13 +357,19 @@ export default function ServicesSection({ services, interests, lang }: ServicesS
     const emailCleaned = email.trim().toLowerCase();
     const contactCleaned = contact.trim();
 
+    let reqId = generatedRequestId;
+    if (!reqId) {
+      reqId = "REQ-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      setGeneratedRequestId(reqId);
+    }
+
     try {
       // 1. Fetch current applications list to check for duplicate request
       const snapshot = await get(ref(db, "service_applications"));
       if (snapshot.exists()) {
-        const apps = Object.values(snapshot.val()) as any[];
+        const apps = (Object.values(snapshot.val()) || []).filter(Boolean) as any[];
         const isDuplicate = apps.some((app: any) => {
-          if (app.serviceId !== selectedService.id) return false;
+          if (!app || app.serviceId !== selectedService.id) return false;
           
           // Check match on email
           const dbEmail = (app.email || "").trim().toLowerCase();
@@ -323,9 +393,9 @@ export default function ServicesSection({ services, interests, lang }: ServicesS
       }
 
       // 2. Submit to Realtime Database using the generated Request ID
-      const appRef = ref(db, `service_applications/${generatedRequestId}`);
+      const appRef = ref(db, `service_applications/${reqId}`);
       await set(appRef, {
-        id: generatedRequestId,
+        id: reqId,
         serviceId: selectedService.id,
         serviceTitle: selectedService.titleEn,
         name,
@@ -615,80 +685,178 @@ export default function ServicesSection({ services, interests, lang }: ServicesS
                   </div>
                 </div>
 
-                <div className="p-6 bg-[#0c1222] border border-white/10 rounded-2xl space-y-6 font-sans relative overflow-hidden print:bg-white print:text-black">
-                  <div className="absolute top-0 right-0 p-3 bg-cyan-500/10 text-cyan-400 border-l border-b border-white/10 rounded-bl-xl font-mono text-xs font-bold tracking-widest">
+                <div className="print-receipt-only p-6 md:p-8 bg-[#0a0f1d] border border-white/10 rounded-2xl space-y-6 font-sans relative overflow-hidden print:bg-white print:text-black print:border-none print:shadow-none">
+                  
+                  {/* Print Watermark */}
+                  <div className="absolute top-0 right-0 p-3.5 bg-cyan-500/10 text-cyan-400 border-l border-b border-white/10 rounded-bl-xl font-mono text-xs font-bold tracking-widest print:text-black print:border-black/10 print:bg-slate-100">
                     {generatedRequestId}
                   </div>
 
-                  <div className="border-b border-white/10 pb-4">
-                    <h4 className="text-sm font-mono text-cyan-400 font-bold uppercase tracking-wider">
-                      {lang === "en" ? "Application Invoice Receipt" : "आवेदन रसिद पूर्वावलोकन"}
-                    </h4>
-                    <span className="text-xs text-gray-400 block mt-1">
-                      {lang === "en" ? "Service Applied:" : "लागू गरिएको सेवा:"} <strong className="text-white">{lang === "en" ? selectedService.titleEn : selectedService.titleNp}</strong>
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-1">
-                      <span className="text-gray-400 block">{lang === "en" ? "Applicant Full Name:" : "आवेदकको पूरा नाम:"}</span>
-                      <strong className="text-white text-sm">{name}</strong>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-gray-400 block">{lang === "en" ? "Contact Number:" : "सम्पर्क नम्बर:"}</span>
-                      <strong className="text-white text-sm font-mono">+977 {contact}</strong>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-gray-400 block">{lang === "en" ? "Gmail Address:" : "जिमेल ठेगाना:"}</span>
-                      <strong className="text-white text-sm font-mono">{email}</strong>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-gray-400 block">{lang === "en" ? "Preferred Contact Method:" : "सम्पर्क विधि:"}</span>
-                      <strong className="text-white text-sm">{contactMethod}</strong>
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <span className="text-gray-400 block">{lang === "en" ? "Permanent Address:" : "स्थायी ठेगाना:"}</span>
-                      <strong className="text-white">
-                        {province}, {district}, {localLevel}, Ward {ward}, {tole}
-                      </strong>
-                    </div>
-                    {temporaryAddress && (
-                      <div className="space-y-1 md:col-span-2">
-                        <span className="text-gray-400 block">{lang === "en" ? "Temporary Address:" : "अस्थायी ठेगाना:"}</span>
-                        <strong className="text-white">{temporaryAddress}</strong>
+                  {/* 1. Header with custom brand logo & Title */}
+                  <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4 border-b border-white/10 pb-6 print:border-black/10">
+                    <div className="flex items-center space-x-3.5">
+                      <img 
+                        src={logoUrl || faviconUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"} 
+                        alt="Portal Logo" 
+                        referrerPolicy="no-referrer"
+                        className="w-12 h-12 rounded-xl object-cover border border-white/20 print:border-black/10 bg-slate-800"
+                      />
+                      <div>
+                        <h1 className="text-sm md:text-base font-extrabold text-white print:text-black tracking-wide font-display">
+                          ALL DIGITAL SERVICES UNDER A SITE
+                        </h1>
+                        <p className="text-[11px] text-cyan-400 print:text-slate-600 font-mono font-bold uppercase tracking-wider">
+                          {lang === "en" ? "Authorized Digital Services Hub" : "अधिकृत डिजिटल सेवा केन्द्र"}
+                        </p>
                       </div>
-                    )}
+                    </div>
+                    <div className="text-center md:text-right flex flex-col items-center md:items-end text-xs space-y-0.5 pt-2">
+                      <span className="font-mono font-bold text-white print:text-black text-sm uppercase tracking-wide">
+                        {lang === "en" ? "Official Invoice" : "आधिकारिक रसिद"}
+                      </span>
+                      <span className="text-gray-400 print:text-slate-500 font-mono">Date: {new Date().toLocaleDateString('ne-NP')} (A.D. {new Date().toLocaleDateString('en-US')})</span>
+                      <span className="text-cyan-400 print:text-slate-600 font-mono font-bold">Ref: {generatedRequestId}</span>
+                    </div>
                   </div>
 
-                  {/* Custom Questions Answers Preview */}
+                  {/* 2. Bill Statement / Service Table */}
+                  <div className="space-y-2">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-purple-400 print:text-purple-700 font-mono">
+                      {lang === "en" ? "Billing & Charges Statement" : "बिलिङ र शुल्क विवरण"}
+                    </h2>
+                    <div className="overflow-x-auto rounded-xl border border-white/5 print:border-black/10 bg-black/20 print:bg-slate-50">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-white/5 border-b border-white/10 text-gray-300 print:bg-slate-200 print:text-black print:border-black/10">
+                            <th className="p-3 font-semibold">{lang === "en" ? "Particulars / Service Title" : "सेवाको विवरण / शीर्षक"}</th>
+                            <th className="p-3 font-semibold text-center w-16">{lang === "en" ? "Qty" : "संख्या"}</th>
+                            <th className="p-3 font-semibold text-right w-28">{lang === "en" ? "Service Charge" : "सेवा शुल्क"}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-white/5 text-white print:text-black print:border-black/10">
+                            <td className="p-3">
+                              <span className="font-bold block text-sm">{lang === "en" ? selectedService.titleEn : selectedService.titleNp}</span>
+                              <span className="text-[11px] text-gray-400 print:text-slate-600 block mt-0.5 leading-normal">
+                                {lang === "en" ? selectedService.descriptionEn : selectedService.descriptionNp}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center font-mono">1</td>
+                            <td className="p-3 text-right font-mono font-bold text-cyan-400 print:text-black">
+                              {lang === "en" ? selectedService.priceEn : selectedService.priceNp}
+                            </td>
+                          </tr>
+                          <tr className="bg-white/[0.02] print:bg-slate-100 text-white print:text-black font-bold">
+                            <td colSpan={2} className="p-3 text-right uppercase tracking-wider text-[11px]">
+                              {lang === "en" ? "Total Payable Amount:" : "कुल भुक्तानी गर्नुपर्ने रकम:"}
+                            </td>
+                            <td className="p-3 text-right font-mono text-sm text-emerald-400 print:text-emerald-700">
+                              {lang === "en" ? selectedService.priceEn : selectedService.priceNp}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 3. Applicant Form Details & Payment Card */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/5 pt-4 print:border-black/10">
+                    <div className="space-y-3">
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-400 print:text-slate-700 font-mono">
+                        {lang === "en" ? "Applicant Information" : "आवेदकको विवरण"}
+                      </h2>
+                      <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl space-y-2 text-xs print:bg-white print:border-black/5">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400 print:text-slate-500">{lang === "en" ? "Full Name:" : "पूरा नाम:"}</span>
+                          <span className="font-bold text-white print:text-black">{name}</span>
+                        </div>
+                        <div className="flex justify-between font-mono">
+                          <span className="text-gray-400 print:text-slate-500">{lang === "en" ? "Contact Number:" : "सम्पर्क नम्बर:"}</span>
+                          <span className="font-bold text-white print:text-black">+977 {contact}</span>
+                        </div>
+                        <div className="flex justify-between font-mono">
+                          <span className="text-gray-400 print:text-slate-500">{lang === "en" ? "Gmail Address:" : "जिमेल ठेगाना:"}</span>
+                          <span className="font-bold text-white print:text-black">{email}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400 print:text-slate-500">{lang === "en" ? "Preferred Contact:" : "सम्पर्क प्राथमिकता:"}</span>
+                          <span className="font-bold text-white print:text-black">{contactMethod}</span>
+                        </div>
+                        <div className="border-t border-white/5 pt-2 mt-2 print:border-black/5">
+                          <span className="text-gray-400 print:text-slate-500 block text-[10px] mb-0.5">{lang === "en" ? "Permanent Address:" : "स्थायी ठेगाना:"}</span>
+                          <span className="font-bold text-white print:text-black text-[11px] block leading-relaxed">
+                            {province}, {district}, {localLevel}, Ward {ward}, {tole}
+                          </span>
+                        </div>
+                        {temporaryAddress && (
+                          <div className="border-t border-white/5 pt-2 print:border-black/5">
+                            <span className="text-gray-400 print:text-slate-500 block text-[10px] mb-0.5">{lang === "en" ? "Temporary Address:" : "अस्थायी ठेगाना:"}</span>
+                            <span className="font-bold text-white print:text-black text-[11px] block leading-relaxed">{temporaryAddress}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* eSewa QR Payment & Transfer box */}
+                    <div className="space-y-3 print-break-inside-avoid">
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-400 print:text-emerald-700 font-mono">
+                        {lang === "en" ? "eSewa Scan & Pay Transfer Box" : "ईसेवा स्क्यान र भुक्तानी बक्स"}
+                      </h2>
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex flex-col sm:flex-row items-center gap-4 text-xs print:bg-emerald-50/50 print:border-emerald-300">
+                        {/* Dynamic free QR API Server generation based on the payment eSewa ID */}
+                        <div className="w-28 h-28 bg-white p-2 rounded-lg flex-shrink-0 shadow-lg border border-emerald-500/30">
+                          <img 
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=9746241860" 
+                            alt="eSewa QR Code" 
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="space-y-2 text-center sm:text-left flex-1">
+                          <div className="inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 print:bg-emerald-600 print:text-white">
+                            {lang === "en" ? "Official eSewa ID" : "आधिकारिक ईसेवा आईडी"}
+                          </div>
+                          <div className="font-mono text-base font-extrabold text-white print:text-black">
+                            9746241860
+                          </div>
+                          <p className="text-[10px] leading-normal text-gray-300 print:text-slate-700">
+                            {lang === "en" 
+                              ? `Please scan the QR code or transfer the total service charge of ${selectedService.priceEn} to the eSewa ID above to proceed with processing. Write your unique ID on the payment remarks.`
+                              : `प्रक्रिया सुरु गर्नको लागि कृपया QR कोड स्क्यान गर्नुहोस् वा माथिको ईसेवा आईडी ९७४६२४१८६० मा कुल सेवा शुल्क ${selectedService.priceNp} पठाउनुहोस्। विवरणमा आफ्नो अनुरोध आईडी उल्लेख गर्नुहोस्।`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Form Questionnaire Responses (Custom Questions) */}
                   {customQuestions.length > 0 && (
-                    <div className="border-t border-white/5 pt-4 space-y-3">
-                      <span className="text-xs font-bold font-mono text-purple-400 block uppercase">
-                        {lang === "en" ? "Form Questionnaire Responses" : "प्रश्नावली प्रतिक्रियाहरू"}
-                      </span>
-                      <div className="space-y-2.5">
+                    <div className="border-t border-white/5 pt-4 space-y-2 print:border-black/10 print-break-inside-avoid">
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-purple-400 print:text-slate-700 font-mono">
+                        {lang === "en" ? "Form Questionnaire & Submissions" : "प्रश्नावली र बुझाइएका विवरणहरू"}
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         {customQuestions.map((q, idx) => (
-                          <div key={idx} className="bg-white/[0.01] p-2.5 rounded-lg border border-white/5 text-xs">
-                            <span className="text-gray-400 block mb-1 font-semibold">{q}</span>
-                            <p className="text-white">{customAnswers[q] || "N/A"}</p>
+                          <div key={idx} className="bg-white/[0.01] p-3 rounded-xl border border-white/5 text-xs print:bg-slate-50 print:border-black/5">
+                            <span className="text-gray-400 print:text-slate-500 block mb-1 font-semibold">{q}</span>
+                            <p className="text-white print:text-black font-medium leading-relaxed">{customAnswers[q] || "N/A"}</p>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Uploaded Attachments Count */}
-                  <div className="border-t border-white/5 pt-4 space-y-2">
-                    <span className="text-xs font-bold font-mono text-cyan-400 block uppercase">
-                      {lang === "en" ? "Uploaded Files Proofs" : "अपलोड गरिएका फाइलहरूको प्रमाण"}
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {/* 5. Uploaded Attachments checklist */}
+                  <div className="border-t border-white/5 pt-4 space-y-2 print:border-black/10 print-break-inside-avoid">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-400 print:text-slate-700 font-mono">
+                      {lang === "en" ? "Compulsory Uploaded Attachments Proofs" : "अपलोड गरिएका अनिवार्य कागजातहरू"}
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {attachments.map((att, idx) => (
-                        <div key={idx} className="flex items-center space-x-2 bg-white/5 p-2 rounded-xl border border-white/10">
-                          <FileText className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+                        <div key={idx} className="flex items-center space-x-2 bg-white/5 p-2.5 rounded-xl border border-white/10 text-xs print:bg-slate-50 print:border-black/10">
+                          <FileText className="h-4 w-4 text-cyan-400 print:text-cyan-600 flex-shrink-0" />
                           <div className="truncate">
-                            <span className="text-gray-400 text-[9px] block uppercase leading-none">{att.name}</span>
-                            <span className="text-white font-mono text-[10px] truncate block">{att.fileName}</span>
+                            <span className="text-gray-400 print:text-slate-500 text-[9px] block uppercase leading-none">{att.name}</span>
+                            <span className="text-white print:text-black font-mono text-[10px] truncate block mt-0.5">{att.fileName}</span>
                           </div>
                         </div>
                       ))}
@@ -697,6 +865,25 @@ export default function ServicesSection({ services, interests, lang }: ServicesS
                       )}
                     </div>
                   </div>
+
+                  {/* 6. Professional Footer Policy Notice / Terms */}
+                  <div className="border-t border-white/10 pt-4 flex flex-col sm:flex-row justify-between items-center text-[10px] text-gray-400 print:text-slate-500 print:border-black/10 print-break-inside-avoid gap-3">
+                    <div className="space-y-1 text-center sm:text-left max-w-md">
+                      <span className="font-bold text-amber-400 print:text-amber-600 block uppercase tracking-wider font-mono">
+                        🔒 PRIVACY & SECURITY ENFORCED (स्वचालित डाटा मेटाउने नीति)
+                      </span>
+                      <p className="leading-relaxed">
+                        {lang === "en"
+                          ? "Notice: This receipt was dynamically generated. All submitted JPG/PDF documents and private records will be automatically pruned within 2 days by the administrator."
+                          : "सूचना: यो रसिद स्वचालित रूपमा उत्पन्न गरिएको हो। सबै बुझाइएका व्यक्तिगत कागजातहरू र फोटोहरू प्रशासकद्वारा २ दिन भित्र स्थायी रूपमा मेटिने छन्।"}
+                      </p>
+                    </div>
+                    <div className="text-center sm:text-right border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0 w-full sm:w-auto font-mono">
+                      <div className="h-10 border-b border-dashed border-white/20 print:border-black/20 w-36 mx-auto sm:ml-auto"></div>
+                      <span className="block mt-1 text-[9px] uppercase tracking-wider">{lang === "en" ? "Authorized Signature" : "अधिकृत हस्ताक्षर"}</span>
+                    </div>
+                  </div>
+
                 </div>
 
                 {/* Preview Actions */}
