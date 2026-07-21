@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { initializeApp } from "firebase/app";
 import { 
@@ -43,6 +43,7 @@ export default function Dashboard() {
 
   // Unique session token for Single-Session Currency Enforcement
   const [mySessionToken] = useState(() => Math.random().toString(36).substring(2) + Date.now().toString());
+  const hasWrittenSessionRef = useRef(false);
 
   // Toast status notification state
   const [toast, setToast] = useState<Toast | null>(null);
@@ -312,7 +313,7 @@ export default function Dashboard() {
         const sessionRef = ref(db, "admin/current_session");
         onValue(sessionRef, (snapshot) => {
           const activeSession = snapshot.val();
-          if (activeSession && activeSession !== mySessionToken) {
+          if (activeSession && activeSession !== mySessionToken && hasWrittenSessionRef.current) {
             // Another device logged in! Force instant client-side logout
             handleForceLogout();
           }
@@ -370,6 +371,7 @@ export default function Dashboard() {
 
       // Write active session token and client signature
       await set(ref(db, "admin/current_session"), mySessionToken);
+      hasWrittenSessionRef.current = true;
 
       // Total Visits analytics
       const visitsSnap = await get(ref(db, "site_stats/visits"));
@@ -400,6 +402,7 @@ export default function Dashboard() {
   };
 
   const handleForceLogout = () => {
+    hasWrittenSessionRef.current = false;
     signOut(auth);
     showToast("error", "Logged Out: Another session has been initiated from a different client.");
     setUser(null);
@@ -438,6 +441,7 @@ export default function Dashboard() {
   // Log-out trigger
   const handleLogout = async () => {
     try {
+      hasWrittenSessionRef.current = false;
       await signOut(auth);
       showToast("success", "Admin session closed cleanly.");
     } catch (err) {
