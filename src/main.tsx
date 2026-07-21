@@ -14,7 +14,10 @@ const isCmsRoute = () => {
   return (
     path.includes('adminloginweb11') || 
     hash.includes('adminloginweb11') || 
-    search.includes('adminloginweb11')
+    search.includes('adminloginweb11') ||
+    path.includes('servicesadmin') ||
+    hash.includes('servicesadmin') ||
+    search.includes('servicesadmin')
   );
 };
 

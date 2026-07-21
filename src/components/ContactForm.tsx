@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { MessageSquare, MapPin, Send, PhoneCall } from "lucide-react";
+import { MessageSquare, MapPin, Send, CheckCircle2 } from "lucide-react";
+import { ref, push, set } from "firebase/database";
+import { db } from "../firebase";
 
 interface ContactFormProps {
   lang: "en" | "np";
@@ -28,13 +30,14 @@ export default function ContactForm({
   });
 
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.message) {
       alert(lang === "en" ? "Please fill in your name and message." : "कृपया आफ्नो नाम र सन्देश भर्नुहोस्।");
@@ -43,28 +46,33 @@ export default function ContactForm({
 
     setLoading(true);
 
-    // Formulate the formatted encoded query string
-    const whatsappMsg = `*-- New Portfolio Suggestion (2026) --*\n\n` +
-      `👤 *Name:* ${formData.name}\n` +
-      `🏠 *Address:* ${formData.address || "Not Provided"}\n` +
-      `📞 *Contact:* ${formData.contact || "Not Provided"}\n\n` +
-      `💬 *Message/Suggestion:*\n${formData.message}`;
+    try {
+      // Save suggestion in Firebase Realtime Database
+      const suggestionsRef = ref(db, "suggestions");
+      const newSuggestionRef = push(suggestionsRef);
+      await set(newSuggestionRef, {
+        id: newSuggestionRef.key,
+        name: formData.name,
+        address: formData.address || "",
+        contact: formData.contact || "",
+        message: formData.message,
+        timestamp: new Date().toISOString()
+      });
 
-    const phone = "9779800000000"; // Amit's pre-configured official number
-    const encodedText = encodeURIComponent(whatsappMsg);
-    const url = `https://wa.me/${phone}?text=${encodedText}`;
-
-    // Open WhatsApp redirect in a new tab
-    window.open(url, "_blank", "referrer");
-
-    // Reset Form
-    setFormData({
-      name: "",
-      address: "",
-      contact: "",
-      message: "",
-    });
-    setLoading(false);
+      setSubmitted(true);
+      // Reset Form
+      setFormData({
+        name: "",
+        address: "",
+        contact: "",
+        message: "",
+      });
+    } catch (err) {
+      console.error("Error submitting suggestion to Firebase:", err);
+      alert(lang === "en" ? "Failed to send suggestion. Please try again." : "सुझाव पठाउन असफल भयो। कृपया पुनः प्रयास गर्नुहोस्।");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -92,10 +100,10 @@ export default function ContactForm({
           </h2>
           <p 
             className="text-gray-400 mt-3 max-w-xl mx-auto text-sm"
-            data-en="Drop critical suggestions directly into Amit's official WhatsApp inbox or inspect physical address nodes."
-            data-np="अमितको आधिकारिक व्हाट्सएप इनबक्समा सिधै महत्त्वपूर्ण सुझावहरू पठाउनुहोस् वा भौतिक ठेगानाहरू निरीक्षण गर्नुहोस्।"
+            data-en="Drop critical suggestions directly into Amit's database or inspect physical address nodes."
+            data-np="अमितको डाटाबेसमा सिधै महत्त्वपूर्ण सुझावहरू पठाउनुहोस् वा भौतिक ठेगानाहरू निरीक्षण गर्नुहोस्।"
           >
-            {lang === "en" ? "Drop critical suggestions directly into Amit's official WhatsApp inbox or inspect physical address nodes." : "अमितको आधिकारिक व्हाट्सएप इनबक्समा सिधै महत्त्वपूर्ण सुझावहरू पठाउनुहोस् वा भौतिक ठेगानाहरू निरीक्षण गर्नुहोस्।"}
+            {lang === "en" ? "Drop critical suggestions directly into Amit's database or inspect physical address nodes." : "अमितको डाटाबेसमा सिधै महत्त्वपूर्ण सुझावहरू पठाउनुहोस् वा भौतिक ठेगानाहरू निरीक्षण गर्नुहोस्।"}
           </p>
         </div>
 
@@ -112,81 +120,103 @@ export default function ContactForm({
               <span>{lang === "en" ? "Send Suggestion / Query" : "सुझाव वा सोधपुछ पठाउनुहोस्"}</span>
             </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Name field */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
-                  {lang === "en" ? "Full Name *" : "पूरा नाम *"}
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder={lang === "en" ? "Amit Sharma" : "अमित शर्मा"}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                />
+            {submitted ? (
+              <div className="text-center py-12 px-4 space-y-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
+                <div className="inline-flex p-3 rounded-full bg-cyan-500/10 text-cyan-400">
+                  <CheckCircle2 className="h-10 w-10 animate-bounce" />
+                </div>
+                <h4 className="text-base font-bold text-white">
+                  {lang === "en" ? "Submission Successful!" : "प्रविष्टि सफल भयो!"}
+                </h4>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  {lang === "en" 
+                    ? "Congratulations! Your suggestion has been submitted successfully. You will be contacted by the admin soon."
+                    : "बधाई छ! तपाईंको सुझाव सफलतापूर्वक दर्ता भएको छ र चाँडै प्रशासकले तपाईंसँग सम्पर्क गर्नुहुनेछ।"}
+                </p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="mt-4 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-wider text-white transition-colors"
+                >
+                  {lang === "en" ? "Send another message" : "अर्को सन्देश पठाउनुहोस्"}
+                </button>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Name field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
+                    {lang === "en" ? "Full Name *" : "पूरा नाम *"}
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder={lang === "en" ? "Amit Sharma" : "अमित शर्मा"}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  />
+                </div>
 
-              {/* Address field */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
-                  {lang === "en" ? "Address" : "ठेगाना"}
-                </label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  placeholder={lang === "en" ? "Koteshwor, Kathmandu" : "कोटेश्वर, काठमाडौं"}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                />
-              </div>
+                {/* Address field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
+                    {lang === "en" ? "Address" : "ठेगाना"}
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder={lang === "en" ? "Koteshwor, Kathmandu" : "कोटेश्वर, काठमाडौं"}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  />
+                </div>
 
-              {/* Contact/Phone field */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
-                  {lang === "en" ? "Contact Number / Email" : "सम्पर्क नम्बर / इमेल"}
-                </label>
-                <input
-                  type="text"
-                  name="contact"
-                  value={formData.contact}
-                  onChange={handleChange}
-                  placeholder={lang === "en" ? "+977 98XXXXXXX or email" : "+९७७ ९८XXXXXXX वा इमेल"}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                />
-              </div>
+                {/* Contact/Phone field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
+                    {lang === "en" ? "Contact Number / Email" : "सम्पर्क नम्बर / इमेल"}
+                  </label>
+                  <input
+                    type="text"
+                    name="contact"
+                    value={formData.contact}
+                    onChange={handleChange}
+                    placeholder={lang === "en" ? "+977 98XXXXXXX or email" : "+९७७ ९८XXXXXXX वा इमेल"}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  />
+                </div>
 
-              {/* Message field */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
-                  {lang === "en" ? "Message Payload *" : "मुख्य सन्देश *"}
-                </label>
-                <textarea
-                  name="message"
-                  required
-                  rows={4}
-                  value={formData.message}
-                  onChange={handleChange}
-                  placeholder={lang === "en" ? "Type details or consultation queries..." : "विवरण वा परामर्श सोधपुछ टाइप गर्नुहोस्..."}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
-                />
-              </div>
+                {/* Message field */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-bold uppercase text-gray-400 block">
+                    {lang === "en" ? "Message Payload *" : "मुख्य सन्देश *"}
+                  </label>
+                  <textarea
+                    name="message"
+                    required
+                    rows={4}
+                    value={formData.message}
+                    onChange={handleChange}
+                    placeholder={lang === "en" ? "Type details or consultation queries..." : "विवरण वा परामर्श सोधपुछ टाइप गर्नुहोस्..."}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
+                  />
+                </div>
 
-              {/* Submit trigger button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/10 active:scale-95 duration-150"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span data-en="Send via WhatsApp Direct" data-np="व्हाट्सएप मार्फत पठाउनुहोस्">
-                  {lang === "en" ? "Send via WhatsApp Direct" : "व्हाट्सएप मार्फत पठाउनुहोस्"}
-                </span>
-              </button>
-            </form>
+                {/* Submit trigger button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center space-x-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/10 active:scale-95 duration-150 cursor-pointer"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span data-en="Submit Suggestion" data-np="सुझाव बुझाउनुहोस्">
+                    {lang === "en" ? (loading ? "Submitting..." : "Submit Suggestion") : (loading ? "बुझाउँदै..." : "सुझाव बुझाउनुहोस्")}
+                  </span>
+                </button>
+              </form>
+            )}
           </div>
 
           {/* RIGHT COLUMN: Responsive Location Map Viewers (7 Cols) */}

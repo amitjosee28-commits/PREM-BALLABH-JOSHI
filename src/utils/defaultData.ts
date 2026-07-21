@@ -99,6 +99,14 @@ export interface PortfolioData {
     whatsappMessageNp: string;
     officialLink: string;
     icon: string;
+    photoReqsEn?: string;
+    photoReqsNp?: string;
+    docReqsEn?: string;
+    docReqsNp?: string;
+    specialNoticeEn?: string;
+    specialNoticeNp?: string;
+    customQuestionsEn?: string;
+    customQuestionsNp?: string;
   }>;
   popup: {
     active: boolean;

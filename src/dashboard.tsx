@@ -11,7 +11,7 @@ import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
 import { 
   Lock, Mail, Eye, EyeOff, Layout, Globe, Plus, Trash2, Edit3, 
   Save, Eye as PreviewIcon, ArrowLeft, RefreshCw, CheckCircle2, XCircle, 
-  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen
+  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
 
@@ -51,7 +51,7 @@ export default function Dashboard() {
   const [activeLangTab, setActiveLangTab] = useState<"en" | "np">("en");
   
   // Section Navigation inside CMS
-  const [activeCmsSection, setActiveCmsSection] = useState<"header" | "biography" | "slides" | "socials" | "initiatives" | "tools" | "education" | "services" | "interests" | "popup" | "maps" | "footer">("header");
+  const [activeCmsSection, setActiveCmsSection] = useState<string>("header");
 
   // Rich Text Custom Style Generator state
   const [richTextConfig, setRichTextConfig] = useState({
@@ -126,8 +126,85 @@ export default function Dashboard() {
     whatsappMessageEn: "",
     whatsappMessageNp: "",
     officialLink: "",
-    icon: "Layout"
+    icon: "Layout",
+    photoReqsEn: "",
+    photoReqsNp: "",
+    docReqsEn: "",
+    docReqsNp: "",
+    specialNoticeEn: "",
+    specialNoticeNp: "",
+    customQuestionsEn: "",
+    customQuestionsNp: ""
   });
+
+  // Suggestion & Application Box states
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
+
+  // Real-time loading
+  const fetchSuggestions = async () => {
+    try {
+      const snapshot = await get(ref(db, "suggestions"));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        setSuggestions(list);
+      } else {
+        setSuggestions([]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchApplications = async () => {
+    try {
+      const snapshot = await get(ref(db, "service_applications"));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        setApplications(list);
+      } else {
+        setApplications([]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteSuggestion = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this suggestion?")) return;
+    try {
+      await set(ref(db, `suggestions/${id}`), null);
+      showToast("success", "Suggestion deleted successfully.");
+      fetchSuggestions();
+    } catch (err) {
+      showToast("error", "Failed to delete suggestion.");
+    }
+  };
+
+  const handleDeleteApplication = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this application?")) return;
+    try {
+      await set(ref(db, `service_applications/${id}`), null);
+      showToast("success", "Application deleted successfully.");
+      fetchApplications();
+    } catch (err) {
+      showToast("error", "Failed to delete application.");
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      if (activeCmsSection === "suggestions") {
+        fetchSuggestions();
+      } else if (activeCmsSection === "applications") {
+        fetchApplications();
+      }
+    }
+  }, [user, activeCmsSection]);
 
   // Form Inputs for Interests
   const [interestForm, setInterestForm] = useState({
@@ -511,7 +588,26 @@ export default function Dashboard() {
       updated.push({ ...serviceForm, id: "serv-" + Date.now() });
     }
     setStagingData(prev => ({ ...prev, services: updated }));
-    setServiceForm({ titleEn: "", titleNp: "", descriptionEn: "", descriptionNp: "", priceEn: "", priceNp: "", whatsappMessageEn: "", whatsappMessageNp: "", officialLink: "", icon: "Layout" });
+    setServiceForm({
+      titleEn: "",
+      titleNp: "",
+      descriptionEn: "",
+      descriptionNp: "",
+      priceEn: "",
+      priceNp: "",
+      whatsappMessageEn: "",
+      whatsappMessageNp: "",
+      officialLink: "",
+      icon: "Layout",
+      photoReqsEn: "",
+      photoReqsNp: "",
+      docReqsEn: "",
+      docReqsNp: "",
+      specialNoticeEn: "",
+      specialNoticeNp: "",
+      customQuestionsEn: "",
+      customQuestionsNp: ""
+    });
     setEditingItemId(null);
     showToast("success", "Premium service configuration saved.");
   };
@@ -855,6 +951,8 @@ export default function Dashboard() {
             Manage Sections
           </h3>
           {[
+            { id: "suggestions", label: "Suggestions Box 📥", icon: MessageSquare },
+            { id: "applications", label: "Service Applications 📋", icon: Inbox },
             { id: "header", label: "Favicons & Branding", icon: Layout },
             { id: "biography", label: "Homepage & Biographies", icon: Users },
             { id: "slides", label: "Cinematic Home Slides", icon: Sliders },
@@ -925,6 +1023,241 @@ export default function Dashboard() {
           {/* DYNAMIC FORM SHELL CONTENT */}
           <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 backdrop-blur-md shadow-2xl space-y-6 text-xs">
             
+            {/* ---------------- SUGGESTIONS BOX SECTION ---------------- */}
+            {activeCmsSection === "suggestions" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Suggestions & Queries Box</h3>
+                    <p className="text-gray-500 mt-1">Review suggestions and user feedback stored securely in your Firebase database.</p>
+                  </div>
+                  <button 
+                    onClick={fetchSuggestions}
+                    className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/10 transition-colors cursor-pointer flex items-center space-x-1.5"
+                    title="Refresh suggestions"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span className="text-[10px] font-mono font-bold uppercase">Refresh</span>
+                  </button>
+                </div>
+
+                {suggestions.length === 0 ? (
+                  <div className="py-12 text-center text-gray-500 font-mono">
+                    No suggestions or user feedback submitted yet.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {suggestions.map((item) => (
+                      <div key={item.id} className="p-5 bg-black/40 border border-white/10 rounded-2xl space-y-3 relative group">
+                        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-white/5 pb-2">
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{item.name}</h4>
+                            <span className="text-[10px] font-mono text-gray-500 block mt-0.5">
+                              Submitted: {new Date(item.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteSuggestion(item.id)}
+                            className="p-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-black transition-colors cursor-pointer"
+                            title="Mark as solved / delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                          <div className="space-y-1">
+                            <span className="text-gray-500 uppercase text-[9px] font-bold block">Contact Details:</span>
+                            <div className="flex items-center space-x-1 text-cyan-400">
+                              <Mail className="h-3.5 w-3.5" />
+                              <span className="select-all">{item.contact || "Not Provided"}</span>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-gray-500 uppercase text-[9px] font-bold block">Physical Location:</span>
+                            <div className="flex items-center space-x-1 text-gray-300">
+                              <MapPin className="h-3.5 w-3.5 text-purple-400" />
+                              <span>{item.address || "Not Provided"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
+                          <span className="text-gray-500 uppercase text-[9px] font-mono font-bold block">Suggestion/Message payload:</span>
+                          <p className="text-white text-xs whitespace-pre-wrap leading-relaxed">{item.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ---------------- SERVICE APPLICATIONS SECTION ---------------- */}
+            {activeCmsSection === "applications" && (
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-2 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-base font-bold font-sans text-cyan-400 uppercase tracking-wide">Service Applications Portal</h3>
+                    <p className="text-gray-500 mt-1">Review official service inquiries, permanent Nepalese address nodes, and uploaded document packages.</p>
+                  </div>
+                  <button 
+                    onClick={fetchApplications}
+                    className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white border border-white/10 transition-colors cursor-pointer flex items-center space-x-1.5"
+                    title="Refresh applications"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span className="text-[10px] font-mono font-bold uppercase">Refresh</span>
+                  </button>
+                </div>
+
+                {applications.length === 0 ? (
+                  <div className="py-12 text-center text-gray-500 font-mono">
+                    No service applications submitted yet.
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {applications.map((app) => (
+                      <div key={app.id} className="p-6 bg-black/40 border border-white/10 rounded-2xl space-y-4 relative group">
+                        
+                        {/* Header card info */}
+                        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-3">
+                          <div>
+                            <span className="px-2 py-0.5 rounded text-[9px] bg-cyan-500/10 text-cyan-400 font-mono font-bold uppercase tracking-wider">
+                              {app.serviceTitle}
+                            </span>
+                            <h4 className="text-base font-extrabold text-white mt-1">{app.name}</h4>
+                            <span className="text-[10px] font-mono text-gray-500 block mt-0.5">
+                              Applied At: {new Date(app.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
+                              app.contactMethod === "WhatsApp" ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                            }`}>
+                              Contact via: {app.contactMethod || "Email"}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteApplication(app.id)}
+                              className="p-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-black transition-colors cursor-pointer"
+                              title="Delete application record"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Contacts and Addresses Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Left contact info */}
+                          <div className="space-y-3 p-4 bg-white/[0.01] border border-white/5 rounded-xl text-xs">
+                            <h5 className="font-mono font-bold text-cyan-400 text-[10px] uppercase tracking-wider">Contact Coordinates</h5>
+                            <div className="space-y-2 font-mono">
+                              <div className="flex items-center space-x-2">
+                                <Phone className="h-3.5 w-3.5 text-gray-500" />
+                                <span className="text-gray-400">Phone:</span>
+                                <span className="text-white select-all">{app.contact}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Mail className="h-3.5 w-3.5 text-gray-500" />
+                                <span className="text-gray-400">Email:</span>
+                                <span className="text-white select-all">{app.email}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right permanent addresses */}
+                          <div className="space-y-3 p-4 bg-white/[0.01] border border-white/5 rounded-xl text-xs">
+                            <h5 className="font-mono font-bold text-cyan-400 text-[10px] uppercase tracking-wider">Address Nodes</h5>
+                            <div className="space-y-1.5 leading-relaxed">
+                              <div>
+                                <span className="text-gray-500 font-mono text-[9px] uppercase block">Permanent Address:</span>
+                                <span className="text-white font-sans font-medium">
+                                  {app.permanentAddress?.province || "N/A"} Province, {app.permanentAddress?.district || "N/A"} District, {app.permanentAddress?.localLevel || "N/A"}, Ward {app.permanentAddress?.ward || "N/A"}, {app.permanentAddress?.tole || "N/A"} Tole
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500 font-mono text-[9px] uppercase block mt-1">Temporary Address:</span>
+                                <span className="text-gray-300 font-sans">
+                                  {app.temporaryAddress || "Not Provided"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Custom CMS Answers if any */}
+                        {app.customAnswers && Object.keys(app.customAnswers).length > 0 && (
+                          <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-3 text-xs">
+                            <h5 className="font-mono font-bold text-cyan-400 text-[10px] uppercase tracking-wider">Additional Answers</h5>
+                            <div className="space-y-2.5">
+                              {Object.keys(app.customAnswers).map((q, qidx) => (
+                                <div key={qidx} className="border-l-2 border-cyan-500/30 pl-3">
+                                  <span className="text-gray-500 font-mono text-[10px] block">{q}</span>
+                                  <p className="text-white mt-1 font-sans">{app.customAnswers[q]}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Uploaded Attachments */}
+                        {app.attachments && app.attachments.length > 0 && (
+                          <div className="space-y-2">
+                            <h5 className="font-mono font-bold text-cyan-400 text-[10px] uppercase tracking-wider px-1">Submitted Document Packages</h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {app.attachments.map((file: any, fidx: number) => {
+                                const isImage = file.data && file.data.startsWith("data:image/");
+                                return (
+                                  <div key={fidx} className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between gap-4">
+                                    <div className="flex items-center space-x-2.5 min-w-0">
+                                      <div className="p-2 rounded-lg bg-white/5 text-cyan-400 flex-shrink-0">
+                                        <FileText className="h-4 w-4" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <span className="text-[9px] font-mono font-bold text-cyan-400 block uppercase tracking-wider truncate">
+                                          {file.name}
+                                        </span>
+                                        <span className="text-[10px] text-gray-300 truncate block font-mono" title={file.fileName}>
+                                          {file.fileName}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      {isImage ? (
+                                        <a
+                                          href={file.data}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="p-1.5 rounded bg-cyan-500 text-black hover:bg-cyan-400 text-[9px] font-bold font-mono uppercase tracking-wide"
+                                        >
+                                          View
+                                        </a>
+                                      ) : (
+                                        <a
+                                          href={file.data}
+                                          download={file.fileName}
+                                          className="p-1.5 rounded bg-purple-500 text-white hover:bg-purple-400 text-[9px] font-bold font-mono uppercase tracking-wide"
+                                        >
+                                          Download
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ---------------- 1. SECTION: HEADER CONTROLS ---------------- */}
             {activeCmsSection === "header" && (
               <div className="space-y-6">
@@ -1693,6 +2026,51 @@ export default function Dashboard() {
                     </div>
                   </div>
 
+                  {/* Apply Now Dynamic Form Configurations */}
+                  <div className="border-t border-white/5 pt-4 space-y-4">
+                    <h4 className="font-mono font-bold text-cyan-400 uppercase text-[10px] tracking-wider">Apply Now Custom Form CMS Controls</h4>
+                    
+                    {activeLangTab === "en" ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="font-mono font-bold text-gray-400 uppercase">Special Notice / Instructions (En)</label>
+                          <textarea rows={2} value={serviceForm.specialNoticeEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, specialNoticeEn: e.target.value }))} placeholder="Notice shown at top of the application modal" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-400 uppercase">Photo Upload Reqs (En, comma-separated)</label>
+                          <input type="text" value={serviceForm.photoReqsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, photoReqsEn: e.target.value }))} placeholder="e.g., Passport Photo, Citizenship Copy" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-gray-400 uppercase">PDF/Doc Upload Reqs (En, comma-separated)</label>
+                          <input type="text" value={serviceForm.docReqsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, docReqsEn: e.target.value }))} placeholder="e.g., CV / Resume, Project Proposal" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="font-mono font-bold text-gray-400 uppercase">Custom Dynamic Questions (En, comma-separated)</label>
+                          <input type="text" value={serviceForm.customQuestionsEn || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, customQuestionsEn: e.target.value }))} placeholder="e.g., Previous Tech Stack?, Expected Completion?" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="font-mono font-bold text-purple-400 uppercase">Special Notice / Instructions (Np)</label>
+                          <textarea rows={2} value={serviceForm.specialNoticeNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, specialNoticeNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-purple-400 uppercase">Photo Upload Reqs (Np, comma-separated)</label>
+                          <input type="text" value={serviceForm.photoReqsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, photoReqsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="font-mono font-bold text-purple-400 uppercase">PDF/Doc Upload Reqs (Np, comma-separated)</label>
+                          <input type="text" value={serviceForm.docReqsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, docReqsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="font-mono font-bold text-purple-400 uppercase">Custom Dynamic Questions (Np, comma-separated)</label>
+                          <input type="text" value={serviceForm.customQuestionsNp || ""} onChange={(e) => setServiceForm(prev => ({ ...prev, customQuestionsNp: e.target.value }))} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-end pt-2">
                     <button type="button" onClick={handleSaveService} className="inline-flex items-center space-x-1 px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold uppercase hover:bg-cyan-400">
                       <Plus className="h-4 w-4" />
@@ -1711,7 +2089,29 @@ export default function Dashboard() {
                           <h5 className="font-bold text-white mt-1.5">{activeLangTab === "en" ? s.titleEn : s.titleNp}</h5>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <button onClick={() => { setEditingItemId(s.id); setServiceForm({ ...s }); }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => { 
+                            setEditingItemId(s.id); 
+                            setServiceForm({ 
+                              titleEn: s.titleEn || "",
+                              titleNp: s.titleNp || "",
+                              descriptionEn: s.descriptionEn || "",
+                              descriptionNp: s.descriptionNp || "",
+                              priceEn: s.priceEn || "",
+                              priceNp: s.priceNp || "",
+                              whatsappMessageEn: s.whatsappMessageEn || "",
+                              whatsappMessageNp: s.whatsappMessageNp || "",
+                              officialLink: s.officialLink || "",
+                              icon: s.icon || "Layout",
+                              photoReqsEn: s.photoReqsEn || "",
+                              photoReqsNp: s.photoReqsNp || "",
+                              docReqsEn: s.docReqsEn || "",
+                              docReqsNp: s.docReqsNp || "",
+                              specialNoticeEn: s.specialNoticeEn || "",
+                              specialNoticeNp: s.specialNoticeNp || "",
+                              customQuestionsEn: s.customQuestionsEn || "",
+                              customQuestionsNp: s.customQuestionsNp || ""
+                            }); 
+                          }} className="p-2 text-gray-400 hover:text-cyan-400"><Edit3 className="h-4 w-4" /></button>
                           <button onClick={() => handleDeleteService(s.id)} className="p-2 text-gray-400 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </div>
