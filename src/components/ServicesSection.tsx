@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Heart, Landmark, ExternalLink, FileText, Upload, X, CheckCircle2, Phone, Mail, Sparkles, Printer, ArrowLeft } from "lucide-react";
+import { Heart, Landmark, ExternalLink, FileText, Upload, X, CheckCircle2, Phone, Mail, Sparkles, Printer, ArrowLeft, Search } from "lucide-react";
 import { DynamicLucideIcon } from "./ToolkitSection";
+import StatusCheckerModal from "./StatusCheckerModal";
 import { ref, push, set, get } from "firebase/database";
 import { db } from "../firebase";
 
@@ -61,8 +62,8 @@ interface InterestItem {
   icon: string;
 }
 
-// Image compression helper using Canvas to keep base64 payload size under control and avoid firebase database write failures
-const compressImage = (file: File, maxWidth = 1000, maxHeight = 1000, quality = 0.75): Promise<string> => {
+// Image compression helper using Canvas to keep base64 payload size under 30KB and avoid firebase database write failures
+const compressImage = (file: File, maxWidth = 600, maxHeight = 600, quality = 0.65): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -117,6 +118,9 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Search State for Services
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+
   // Form State
   const [name, setName] = useState("");
   const [province, setProvince] = useState("");
@@ -134,6 +138,7 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
   // Preview State
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [generatedRequestId, setGeneratedRequestId] = useState("");
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
   const handleOpenApplyModal = (service: ServiceItem) => {
     setSelectedService(service);
@@ -363,35 +368,35 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
       setGeneratedRequestId(reqId);
     }
 
+    // 1. Optional duplicate check (wrapped in try/catch to avoid blocking submission if network or rules delay)
     try {
-      // 1. Fetch current applications list to check for duplicate request
       const snapshot = await get(ref(db, "service_applications"));
       if (snapshot.exists()) {
         const apps = (Object.values(snapshot.val()) || []).filter(Boolean) as any[];
         const isDuplicate = apps.some((app: any) => {
           if (!app || app.serviceId !== selectedService.id) return false;
           
-          // Check match on email
           const dbEmail = (app.email || "").trim().toLowerCase();
           const dbPhone = (app.contact || "").replace(/\s+/g, "").replace("+977", "").trim();
           
-          const currentEmail = emailCleaned;
-          const currentPhone = contactCleaned; // 10-digit
-          
-          return dbEmail === currentEmail || dbPhone === currentPhone;
+          return (emailCleaned && dbEmail === emailCleaned) || (contactCleaned && dbPhone === contactCleaned);
         });
 
         if (isDuplicate) {
           alert(
             lang === "en"
-              ? "Duplicate application detected! You have already submitted a request for this service. If you need to re-apply or make changes, please contact us using the 'Contact Me' or 'Suggestions' queries box."
-              : "दुरुस्त प्रतिलिपि आवेदन भेटियो! तपाईंले पहिले नै यस सेवाको लागि आवेदन दिनुभएको छ। यदि तपाईंले फेरि आवेदन दिन वा परिवर्तन गर्नुपरेमा, कृपया 'सम्पर्क नम्बर' वा 'सुझावहरू' बक्स प्रयोग गरेर सम्पर्क गर्नुहोस्।"
+              ? "Duplicate application detected! You have already submitted a request for this service."
+              : "दुरुस्त प्रतिलिपि आवेदन भेटियो! तपाईंले पहिले नै यस सेवाको लागि आवेदन दिनुभएको छ।"
           );
           setLoading(false);
           return;
         }
       }
+    } catch (checkErr) {
+      console.warn("Duplicate check warning (proceeding with submit):", checkErr);
+    }
 
+    try {
       // 2. Submit to Realtime Database using the generated Request ID
       const appRef = ref(db, `service_applications/${reqId}`);
       await set(appRef, {
@@ -420,8 +425,8 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
       console.error("Error submitting service application:", err);
       alert(
         lang === "en" 
-          ? "Failed to submit application. Please try again." 
-          : "आवेदन बुझाउन असफल भयो। कृपया पुनः प्रयास गर्नुहोस्।"
+          ? "Failed to submit application. Please check your network and try again." 
+          : "आवेदन बुझाउन असफल भयो। कृपया आफ्नो नेटवर्क जाँच गरी पुनः प्रयास गर्नुहोस्।"
       );
     } finally {
       setLoading(false);
@@ -464,7 +469,7 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
         {/* ================= SERVICES SUB-SECTION ================= */}
         <div className="mb-24">
           {/* Section Header */}
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-3">
               <Landmark className="h-4 w-4 text-cyan-400" />
               <span 
@@ -489,72 +494,128 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
             >
               {lang === "en" ? "Consulting pipelines, advanced reactive CMS setups, and enterprise application diagnostics." : "परामर्श पाइपलाइन, उन्नत प्रतिक्रियाशील CMS सेटअपहरू, र इन्टरप्राइज अनुप्रयोग निदान।"}
             </p>
-          </div>
 
-          {/* Services Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {services && services.map((service) => (
-              <div
-                key={service.id}
-                className="group relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 hover:bg-white/[0.04] hover:border-cyan-500/35 transition-all duration-300 backdrop-blur-md shadow-xl flex flex-col justify-between"
-              >
-                <div className="space-y-4">
-                  {/* Icon & Price Row */}
-                  <div className="flex items-center justify-between">
-                    <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-all duration-300">
-                      <DynamicLucideIcon name={service.icon} className="h-5 w-5 text-cyan-400" />
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-sm">
-                      {lang === "en" ? service.priceEn : service.priceNp}
-                    </span>
-                  </div>
-
-                  {/* Title and Description */}
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-bold text-white tracking-tight leading-snug group-hover:text-cyan-300 transition-colors">
-                      {lang === "en" ? service.titleEn : service.titleNp}
-                    </h3>
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                      {lang === "en" ? service.descriptionEn : service.descriptionNp}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Actions: Apply Now & Official Link */}
-                <div className="mt-8 pt-4 border-t border-white/5 grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleOpenApplyModal(service)}
-                    className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-all active:scale-95 shadow-lg shadow-cyan-500/10 cursor-pointer"
-                    title={lang === "en" ? "Apply for this service" : "यस सेवाको लागि आवेदन दिनुहोस्"}
+            {/* Services Live Search Bar & Status Checker Button */}
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-2xl mx-auto">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cyan-400" />
+                <input
+                  type="text"
+                  value={serviceSearchQuery}
+                  onChange={(e) => setServiceSearchQuery(e.target.value)}
+                  placeholder={lang === "en" ? "Search services by single letter or keyword..." : "अक्षर वा शब्दद्वारा सेवाहरू खोज्नुहोस्..."}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400/50 transition-all font-mono"
+                />
+                {serviceSearchQuery && (
+                  <button 
+                    onClick={() => setServiceSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-0.5"
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                    <span>
-                      {lang === "en" ? "Apply Now" : "अहिले आवेदन दिनुहोस्"}
-                    </span>
+                    <X className="h-3.5 w-3.5" />
                   </button>
-
-                  {service.officialLink ? (
-                    <a
-                      href={service.officialLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center space-x-1.5 px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all active:scale-95"
-                    >
-                      <span>
-                        {lang === "en" ? "Official Info" : "आधिकारिक जानकारी"}
-                      </span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <div className="px-3 py-2.5 text-center text-[10px] font-mono text-gray-500 uppercase border border-dashed border-white/5 rounded-xl">
-                      {lang === "en" ? "Internal ONLY" : "आन्तरिक मात्र"}
-                    </div>
-                  )}
-                </div>
-
+                )}
               </div>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => setIsStatusModalOpen(true)}
+                className="inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-md w-full sm:w-auto"
+              >
+                <Search className="h-4 w-4 text-purple-400" />
+                <span>{lang === "en" ? "Check Request / Suggestion Status" : "अनुरोध / सुझाव स्थिति जाँच गर्नुहोस्"}</span>
+              </button>
+            </div>
           </div>
+
+          {/* Services Grid (Compact size) */}
+          {(() => {
+            const filteredServices = (services || []).filter(service => {
+              if (!serviceSearchQuery.trim()) return true;
+              const q = serviceSearchQuery.toLowerCase();
+              return (
+                (service.titleEn || "").toLowerCase().includes(q) ||
+                (service.titleNp || "").toLowerCase().includes(q) ||
+                (service.descriptionEn || "").toLowerCase().includes(q) ||
+                (service.descriptionNp || "").toLowerCase().includes(q) ||
+                (service.priceEn || "").toLowerCase().includes(q) ||
+                (service.priceNp || "").toLowerCase().includes(q)
+              );
+            });
+
+            if (filteredServices.length === 0) {
+              return (
+                <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl p-6 max-w-md mx-auto text-xs text-gray-400 font-mono">
+                  {lang === "en" ? `No services found matching "${serviceSearchQuery}"` : `"${serviceSearchQuery}" सँग मिल्ने कुनै सेवा भेटिएन`}
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-7xl mx-auto">
+                {filteredServices.map((service) => (
+                  <div
+                    key={service.id}
+                    className="group relative rounded-xl border border-white/10 bg-white/[0.02] p-4 hover:bg-white/[0.04] hover:border-cyan-500/35 transition-all duration-300 backdrop-blur-md shadow-md flex flex-col justify-between"
+                  >
+                    <div className="space-y-2.5">
+                      {/* Icon & Price Row */}
+                      <div className="flex items-center justify-between">
+                        <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-all duration-300">
+                          <DynamicLucideIcon name={service.icon} className="h-4 w-4 text-cyan-400" />
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-sm">
+                          {lang === "en" ? service.priceEn : service.priceNp}
+                        </span>
+                      </div>
+
+                      {/* Title and Description */}
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-bold text-white tracking-tight leading-snug group-hover:text-cyan-300 transition-colors line-clamp-1">
+                          {lang === "en" ? service.titleEn : service.titleNp}
+                        </h3>
+                        <p className="text-[11px] text-gray-400 leading-normal line-clamp-2">
+                          {lang === "en" ? service.descriptionEn : service.descriptionNp}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions: Apply Now & Official Link */}
+                    <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleOpenApplyModal(service)}
+                        className="inline-flex items-center justify-center space-x-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-black hover:bg-cyan-400 transition-all active:scale-95 shadow-md shadow-cyan-500/10 cursor-pointer"
+                        title={lang === "en" ? "Apply for this service" : "यस सेवाको लागि आवेदन दिनुहोस्"}
+                      >
+                        <FileText className="h-3 w-3" />
+                        <span>
+                          {lang === "en" ? "Apply Now" : "आवेदन"}
+                        </span>
+                      </button>
+
+                      {service.officialLink ? (
+                        <a
+                          href={service.officialLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center space-x-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all active:scale-95"
+                        >
+                          <span>
+                            {lang === "en" ? "Official" : "जानकारी"}
+                          </span>
+                          <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      ) : (
+                        <div className="px-2 py-1.5 text-center text-[9px] font-mono text-gray-500 uppercase border border-dashed border-white/5 rounded-lg">
+                          {lang === "en" ? "Internal" : "आन्तरिक"}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* ================= PASSIONS / INTERESTS PORTAL ================= */}
@@ -835,10 +896,10 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
                         {lang === "en" ? "eSewa Scan & Pay Transfer Box" : "ईसेवा स्क्यान र भुक्तानी बक्स"}
                       </h2>
                       <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl flex flex-col sm:flex-row items-center gap-3 text-xs print:bg-emerald-50/50 print:border-emerald-300">
-                        {/* Dynamic QR API generator linked to eSewa number */}
+                        {/* Dynamic QR API generator linked to exact eSewa JSON payload */}
                         <div className="w-24 h-24 bg-white p-1.5 rounded-lg flex-shrink-0 shadow-lg border border-emerald-500/30">
                           <img 
-                            src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=9746241860" 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({ eSewa_id: "9746241860", name: "Amit Joshi" }))}`} 
                             alt="eSewa QR Code" 
                             className="w-full h-full object-contain"
                           />
@@ -926,7 +987,7 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
                 </div>
 
                 {/* Preview Actions */}
-                <div className="flex flex-col sm:flex-row sm:justify-between gap-3 pt-4 border-t border-white/10">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-3 pt-4 border-t border-white/10 no-print">
                   <button
                     type="button"
                     onClick={() => setIsPreviewMode(false)}
@@ -1375,6 +1436,15 @@ export default function ServicesSection({ services, interests, lang, logoUrl, fa
           </div>
         </div>
       )}
+
+      {/* Status Checker Modal */}
+      <StatusCheckerModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+        lang={lang}
+        logoUrl={logoUrl}
+        faviconUrl={faviconUrl}
+      />
 
     </section>
   );

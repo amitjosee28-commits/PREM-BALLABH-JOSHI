@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, 
-  signOut, onAuthStateChanged, setPersistence, inMemoryPersistence 
+  signOut, onAuthStateChanged, setPersistence, browserLocalPersistence 
 } from "firebase/auth";
 import { getDatabase, ref, get, set, update, onValue } from "firebase/database";
 import { app, auth, db } from "./firebase";
@@ -11,14 +11,14 @@ import { defaultPortfolioData, PortfolioData } from "./utils/defaultData";
 import { 
   Lock, Mail, Eye, EyeOff, Layout, Globe, Plus, Trash2, Edit3, 
   Save, Eye as PreviewIcon, ArrowLeft, RefreshCw, CheckCircle2, XCircle, 
-  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText
+  Settings, Database, Calendar, Users, Sliders, GraduationCap, Heart, Landmark, MapPin, Send, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, BookOpen, MessageSquare, Inbox, Phone, FileText, ShieldCheck
 } from "lucide-react";
 import NetworkCanvas from "./components/NetworkCanvas";
 
 import "./index.css";
 
-// Force-Reauthentication Guard
-setPersistence(auth, inMemoryPersistence);
+// Persistent Session Setup - Prevents premature logout across tabs/reloads
+setPersistence(auth, browserLocalPersistence).catch((err) => console.error("Auth persistence setup error:", err));
 
 interface Toast {
   type: "success" | "error";
@@ -244,6 +244,36 @@ export default function Dashboard() {
       fetchApplications();
     } catch (err) {
       showToast("error", "Failed to delete application.");
+    }
+  };
+
+  const handleUpdateApplicationStatus = async (appId: string, status: string, remarks: string) => {
+    try {
+      await update(ref(db, `service_applications/${appId}`), {
+        status,
+        remarks,
+        updatedAt: new Date().toISOString()
+      });
+      showToast("success", `Remarks & status updated for application ${appId}`);
+      fetchApplications();
+    } catch (err) {
+      console.error(err);
+      showToast("error", "Failed to update application remarks.");
+    }
+  };
+
+  const handleUpdateSuggestionStatus = async (sugId: string, status: string, remarks: string) => {
+    try {
+      await update(ref(db, `suggestions/${sugId}`), {
+        status,
+        remarks,
+        updatedAt: new Date().toISOString()
+      });
+      showToast("success", `Remarks & status updated for suggestion ${sugId}`);
+      fetchSuggestions();
+    } catch (err) {
+      console.error(err);
+      showToast("error", "Failed to update suggestion remarks.");
     }
   };
 
@@ -1167,6 +1197,58 @@ export default function Dashboard() {
                           <span className="text-gray-500 uppercase text-[9px] font-mono font-bold block">Suggestion/Message payload:</span>
                           <p className="text-white text-xs whitespace-pre-wrap leading-relaxed">{item.message}</p>
                         </div>
+
+                        {/* Admin Remarks & Status Control Block */}
+                        <div className="p-4 bg-purple-950/30 border border-purple-500/30 rounded-xl space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] font-mono font-bold uppercase text-purple-400">Tracking ID:</span>
+                              <span className="px-2 py-0.5 rounded font-mono font-extrabold text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40 select-all">
+                                {item.id}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <label className="text-[10px] font-mono text-gray-400 uppercase">Status:</label>
+                              <select 
+                                defaultValue={item.status || "Received"} 
+                                onChange={(e) => {
+                                  const textarea = document.getElementById(`remarks-sug-${item.id}`) as HTMLTextAreaElement;
+                                  handleUpdateSuggestionStatus(item.id, e.target.value, textarea ? textarea.value : (item.remarks || ""));
+                                }}
+                                className="bg-black/60 border border-purple-500/40 text-purple-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold focus:outline-none"
+                              >
+                                <option value="Received">Received</option>
+                                <option value="In Review">In Review</option>
+                                <option value="Acknowledged">Acknowledged</option>
+                                <option value="Resolved">Resolved</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase block">Admin Remarks for User:</label>
+                            <div className="flex gap-2">
+                              <textarea
+                                rows={2}
+                                defaultValue={item.remarks || ""}
+                                id={`remarks-sug-${item.id}`}
+                                placeholder="Enter official remarks for this suggestion ID..."
+                                className="flex-1 bg-black/60 border border-white/15 rounded-xl p-2 text-xs text-white placeholder-gray-500 focus:border-purple-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const textarea = document.getElementById(`remarks-sug-${item.id}`) as HTMLTextAreaElement;
+                                  handleUpdateSuggestionStatus(item.id, item.status || "Received", textarea ? textarea.value : "");
+                                }}
+                                className="px-4 py-2 bg-purple-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-purple-400 transition-colors flex items-center space-x-1 cursor-pointer self-end"
+                              >
+                                <Save className="h-3.5 w-3.5" />
+                                <span>Save</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1331,6 +1413,59 @@ export default function Dashboard() {
                             </div>
                           </div>
                         )}
+
+                        {/* Admin Remarks & Status Control Block */}
+                        <div className="p-4 bg-cyan-950/30 border border-cyan-500/30 rounded-xl space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] font-mono font-bold uppercase text-cyan-400">Request ID:</span>
+                              <span className="px-2 py-0.5 rounded font-mono font-extrabold text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 select-all">
+                                {app.id}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <label className="text-[10px] font-mono text-gray-400 uppercase">Application Status:</label>
+                              <select 
+                                defaultValue={app.status || "Pending"} 
+                                onChange={(e) => {
+                                  const textarea = document.getElementById(`remarks-app-${app.id}`) as HTMLTextAreaElement;
+                                  handleUpdateApplicationStatus(app.id, e.target.value, textarea ? textarea.value : (app.remarks || ""));
+                                }}
+                                className="bg-black/60 border border-cyan-500/40 text-cyan-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold focus:outline-none"
+                              >
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Rejected">Rejected</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase block">Admin Remarks / Notes for Applicant (Visible to user via Status Check):</label>
+                            <div className="flex gap-2">
+                              <textarea
+                                rows={2}
+                                defaultValue={app.remarks || ""}
+                                id={`remarks-app-${app.id}`}
+                                placeholder="Enter official remarks for this application ID..."
+                                className="flex-1 bg-black/60 border border-white/15 rounded-xl p-2 text-xs text-white placeholder-gray-500 focus:border-cyan-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const textarea = document.getElementById(`remarks-app-${app.id}`) as HTMLTextAreaElement;
+                                  handleUpdateApplicationStatus(app.id, app.status || "Pending", textarea ? textarea.value : "");
+                                }}
+                                className="px-4 py-2 bg-cyan-500 text-black font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-cyan-400 transition-colors flex items-center space-x-1 cursor-pointer self-end"
+                              >
+                                <Save className="h-3.5 w-3.5" />
+                                <span>Save Remarks</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
 
                       </div>
                     ))}

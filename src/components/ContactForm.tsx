@@ -32,6 +32,7 @@ export default function ContactForm({
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedTrackingId, setSubmittedTrackingId] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -78,20 +79,22 @@ export default function ContactForm({
     setLoading(true);
 
     try {
-      // Save suggestion in Firebase Realtime Database
-      const suggestionsRef = ref(db, "suggestions");
-      const newSuggestionRef = push(suggestionsRef);
-      await set(newSuggestionRef, {
-        id: newSuggestionRef.key,
+      const trackingId = "SUG-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const suggestionRef = ref(db, `suggestions/${trackingId}`);
+      await set(suggestionRef, {
+        id: trackingId,
         name: formData.name,
         address: formData.address || "",
         contact: `+977 ${phoneCleaned} (${gmailCleaned})`,
         gmail: gmailCleaned,
         phone: `+977 ${phoneCleaned}`,
         message: formData.message,
+        status: "Received",
+        remarks: lang === "en" ? "Suggestion received and logged." : "सुझाव प्राप्त भयो।",
         timestamp: new Date().toISOString()
       });
 
+      setSubmittedTrackingId(trackingId);
       setSubmitted(true);
       // Reset Form
       setFormData({
@@ -155,7 +158,7 @@ export default function ContactForm({
             </h3>
 
             {submitted ? (
-              <div className="text-center py-12 px-4 space-y-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
+              <div className="text-center py-10 px-4 space-y-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
                 <div className="inline-flex p-3 rounded-full bg-cyan-500/10 text-cyan-400">
                   <CheckCircle2 className="h-10 w-10 animate-bounce" />
                 </div>
@@ -164,12 +167,18 @@ export default function ContactForm({
                 </h4>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   {lang === "en" 
-                    ? "Congratulations! Your suggestion has been submitted successfully. You will be contacted by the admin soon."
-                    : "बधाई छ! तपाईंको सुझाव सफलतापूर्वक दर्ता भएको छ र चाँडै प्रशासकले तपाईंसँग सम्पर्क गर्नुहुनेछ।"}
+                    ? "Congratulations! Your suggestion has been submitted successfully."
+                    : "बधाई छ! तपाईंको सुझाव सफलतापूर्वक दर्ता भएको छ।"}
                 </p>
+                {submittedTrackingId && (
+                  <div className="p-3 bg-black/60 border border-purple-500/30 rounded-xl max-w-xs mx-auto font-mono text-center">
+                    <span className="text-gray-400 text-[10px] uppercase block mb-0.5">Suggestion Tracking ID</span>
+                    <span className="text-base font-bold text-purple-400 tracking-wider select-all">{submittedTrackingId}</span>
+                  </div>
+                )}
                 <button
                   onClick={() => setSubmitted(false)}
-                  className="mt-4 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-wider text-white transition-colors"
+                  className="mt-4 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase tracking-wider text-white transition-colors cursor-pointer"
                 >
                   {lang === "en" ? "Send another message" : "अर्को सन्देश पठाउनुहोस्"}
                 </button>
